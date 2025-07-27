@@ -57,7 +57,6 @@ Each zone includes:
 ![WhatsApp Image 2025-07-27 at 5 45 01 AM (3)](https://github.com/user-attachments/assets/65246b24-8aae-426a-951e-6c439eadc26b)
 ![WhatsApp Image 2025-07-27 at 5 45 01 AM (4)](https://github.com/user-attachments/assets/2ab6f788-8f17-4c4f-8776-2e8f0c316acc)
 ![WhatsApp Image 2025-07-27 at 5 45 01 AM (5)](https://github.com/user-attachments/assets/1181f5dc-ef64-48b3-8888-fbee9d2271ae)
-![WhatsApp Image 2025-07-27 at 5 45 01 AM (6)](https://github.com/user-attachments/assets/e2815d54-46e9-4596-88d0-856652a275b6)
 
 
 ---
