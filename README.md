@@ -44,9 +44,10 @@ Each zone includes:
   - [NASA EarthData](https://earthdata.nasa.gov/) (NDVI, land surface temperature)
 
 ---
+## 📷 Preview
 
-##📷 Preview
 will add pics in a min
+---
 ##🤝 Contributors
 aljowharah aljubair – Tech Lead
 
