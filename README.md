@@ -1,70 +1,52 @@
-# Getting Started with Create React App
+# 🌱 RawdahScope Dashboard
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A real-time environmental monitoring dashboard for Riyadh, Saudi Arabia — designed to track the impact of urban afforestation efforts under the Green Riyadh initiative.
 
-## Available Scripts
+Built using **React**, **Recharts**, **OpenWeatherMap**, **WAQI**, and simulated **NASA** satellite data.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 📊 Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **CO₂, Air Temp, and Surface Heat Trends** across afforested, non-afforested, and pre-afforestation zones
+- **Real-time Air Quality Index (AQI)** from WAQI API
+- **Live Weather Heatmap** using OpenWeatherMap API
+- **NDVI Biodiversity Tracking** via NASA EarthData
+- **Sensor Network Map** for deployed IoT sensor stations
+- **Interactive AI Chatbot** (“Rawdah”) for instant environmental summaries
+- **Light/Dark Mode** toggle with clean UI design
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## 📍 Monitoring Zones
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. **Abu Bakr Al-Razi Street** – *Afforested*
+2. **Mohammed Al-Bishr Street** – *Non-afforested*
+3. **Ishaq Ibn Ibrahim Street** – *Pre-afforestation*
 
-### `npm run build`
+Each zone includes:
+- 3 IoT sensor nodes
+- 1 gateway uplink station
+- Sensors: MH-Z19B (CO₂), MLX90614 (surface temp), DS18B20 (air temp)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 🛠 Tech Stack
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- ⚛️ **React.js** (w/ functional components and hooks)
+- 🎨 **Tailwind CSS** for styling
+- 📈 **Recharts** for responsive data visualization
+- 🗺️ **OpenStreetMap + Custom Heatmap SVG Overlay**
+- 🤖 **Lucide Icons** + custom UI kit
+- 🔌 **Live APIs**:  
+  - [OpenWeatherMap](https://openweathermap.org/) (weather/heatmap)  
+  - [WAQI](https://waqi.info/) (air quality index)  
+  - [NASA EarthData](https://earthdata.nasa.gov/) (NDVI, land surface temperature)
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+##📷 Preview
+will add pics in a min
+##🤝 Contributors
+aljowharah aljubair – Tech Lead
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
