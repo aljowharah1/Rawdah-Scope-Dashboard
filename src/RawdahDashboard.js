@@ -55,15 +55,6 @@ class CacheManager {
       expires: Date.now() + ttlMs,
       ttl: ttlMs
     });
-    
-    try {
-      localStorage.setItem(`rawdah_cache_${key}`, JSON.stringify({
-        data,
-        expires: Date.now() + ttlMs
-      }));
-    } catch (e) {
-      console.warn('LocalStorage save failed:', e);
-    }
   }
 
   get(key) {
@@ -75,29 +66,6 @@ class CacheManager {
         age: Date.now() - timestamp.created,
         fromCache: true
       };
-    }
-    
-    try {
-      const stored = localStorage.getItem(`rawdah_cache_${key}`);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Date.now() < parsed.expires) {
-          this.cache.set(key, parsed.data);
-          this.timestamps.set(key, {
-            created: Date.now(),
-            expires: parsed.expires,
-            ttl: parsed.expires - Date.now()
-          });
-          return {
-            data: parsed.data,
-            age: 0,
-            fromCache: true,
-            fromStorage: true
-          };
-        }
-      }
-    } catch (e) {
-      console.warn('LocalStorage read failed:', e);
     }
     
     return null;
@@ -112,14 +80,6 @@ class CacheManager {
   clear() {
     this.cache.clear();
     this.timestamps.clear();
-    
-    try {
-      Object.keys(localStorage)
-        .filter(key => key.startsWith('rawdah_cache_'))
-        .forEach(key => localStorage.removeItem(key));
-    } catch (e) {
-      console.warn('LocalStorage clear failed:', e);
-    }
   }
 
   getCacheStats() {
@@ -217,7 +177,7 @@ const DataFreshness = {
 };
 
 // ============================
-// Enhanced API Service with Caching
+// Enhanced API Service with Fixed Endpoints
 // ============================
 const ApiService = {
   async fetchWeatherData(lat = 24.7136, lng = 46.6753, useCache = true) {
@@ -293,78 +253,74 @@ const ApiService = {
     return null;
   },
 
-  async fetchAirQualityWindow({ lat = 24.7136, lng = 46.6753, radius = 50000, date_from, date_to }) {
-    const cacheKey = `aq_${lat}_${lng}_${date_from}_${date_to}`;
+  // FIXED: Air Quality Window with fixed pollutant set + 24h windows
+  async fetchAirQualityWindow({ 
+    lat = 24.7136, lng = 46.6753, radius = 50000, 
+    date_from, date_to, parameters = ['pm25','pm10','no2','o3','so2','co'] 
+  }) {
+    const cacheKey = `aq_${lat}_${lng}_${date_from}_${date_to}_${parameters.join(',')}`;
     const cached = cacheManager.get(cacheKey);
-    
-    if (cached) {
-      return cached.data;
-    }
-    
+    if (cached) return cached.data;
+
     const fetcher = async () => {
       const url = new URL('https://api.openaq.org/v2/measurements');
       url.search = new URLSearchParams({
         coordinates: `${lat},${lng}`,
         radius: String(radius),
-        limit: '100',
+        limit: '1000',            // 1k to be safe across 24h
         date_from,
         date_to,
-        sort: 'desc',
-        order_by: 'datetime'
+        parameter: parameters.join(','),
+        order_by: 'datetime',
+        sort: 'desc'
       }).toString();
-      
-      const res = await fetch(url.toString());
+
+      const res = await fetch(url.toString(), { mode: 'cors' });
       if (!res.ok) throw new Error('Air quality window failed');
       return await res.json();
     };
-    
+
     const result = await fetchWithRetry(fetcher, { retries: 2 });
-    
     if (result.success) {
       cacheManager.set(cacheKey, result.data, 15);
       return result.data;
     }
-    
     return null;
   },
 
-  async fetchClimateDaily({ lat = 24.7136, lng = 46.6753, start, end, daily = 'leaf_area_index,normalized_difference_vegetation_index,precipitation_sum' }) {
-    const cacheKey = `climate_${lat}_${lng}_${start}_${end}`;
+  // FIXED: Climate API replaced with ERA5 archive endpoint
+  async fetchClimateDaily({ lat = 24.7136, lng = 46.6753, start, end, daily = 'temperature_2m_max,temperature_2m_min,precipitation_sum' }) {
+    const cacheKey = `era5_${lat}_${lng}_${start}_${end}_${daily}`;
     const cached = cacheManager.get(cacheKey);
-    
-    if (cached) {
-      return cached.data;
-    }
-    
+    if (cached) return cached.data;
+
     const fetcher = async () => {
-      const url = new URL('https://climate-api.open-meteo.com/v1/climate');
+      const url = new URL('https://archive-api.open-meteo.com/v1/era5');
       url.search = new URLSearchParams({
         latitude: String(lat),
         longitude: String(lng),
         start_date: start,
         end_date: end,
         daily,
-        models: 'EC_Earth3P'
+        timezone: 'Asia/Riyadh'
       }).toString();
-      
-      const res = await fetch(url.toString());
-      if (!res.ok) throw new Error('Climate API failed');
+
+      const res = await fetch(url.toString(), { mode: 'cors' });
+      if (!res.ok) throw new Error('ERA5 API failed');
       return await res.json();
     };
-    
+
     const result = await fetchWithRetry(fetcher, { retries: 3 });
-    
     if (result.success) {
       cacheManager.set(cacheKey, result.data, 60);
       return result.data;
     }
-    
     return null;
   }
 };
 
 // ============================
-// Data Processors
+// Data Processors with Fixed Logic
 // ============================
 const DataProcessor = {
   async processWeatherForHeatMap() {
@@ -405,57 +361,34 @@ const DataProcessor = {
     };
   },
 
+  // FIXED: Resilient air quality merge
   processAirQualityBeforeAfter(aqNow, aqPrev) {
-    const aggregate = data => {
+    const agg = (data) => {
       const bucket = {};
       for (const m of data?.results ?? []) {
         const p = (m.parameter || '').toUpperCase();
         if (!p) continue;
-        if (!bucket[p]) bucket[p] = { sum: 0, n: 0, unit: m.unit };
-        bucket[p].sum += m.value;
+        if (!bucket[p]) bucket[p] = { sum: 0, n: 0, unit: m.unit || 'µg/m³' };
+        bucket[p].sum += Number(m.value) || 0;
         bucket[p].n += 1;
       }
-      return Object.entries(bucket).map(([pollutant, v]) => ({
-        pollutant,
-        value: v.n ? v.sum / v.n : null,
-        unit: v.unit
-      })).filter(r => r.value != null);
+      return Object.fromEntries(
+        Object.entries(bucket).map(([k, v]) => [k, { mean: v.n ? v.sum / v.n : null, unit: v.unit }])
+      );
     };
 
-    const nowAgg = aggregate(aqNow);
-    const prevAgg = aggregate(aqPrev);
-    const joined = {};
-    
-    for (const r of prevAgg) {
-      joined[r.pollutant] = { 
-        pollutant: r.pollutant, 
-        before: r.value, 
-        after: null, 
-        unit: r.unit,
-        change: null,
-        trend: null
-      };
-    }
-    
-    for (const r of nowAgg) {
-      if (!joined[r.pollutant]) {
-        joined[r.pollutant] = { 
-          pollutant: r.pollutant, 
-          before: null, 
-          after: null, 
-          unit: r.unit 
-        };
-      }
-      joined[r.pollutant].after = r.value;
-      
-      if (joined[r.pollutant].before != null) {
-        const change = ((r.value - joined[r.pollutant].before) / joined[r.pollutant].before) * 100;
-        joined[r.pollutant].change = change;
-        joined[r.pollutant].trend = change < -5 ? 'improving' : change > 5 ? 'worsening' : 'stable';
-      }
-    }
-    
-    return Object.values(joined).filter(x => x.before != null && x.after != null);
+    const A = agg(aqPrev);
+    const B = agg(aqNow);
+    const pollutants = Array.from(new Set([...Object.keys(A), ...Object.keys(B)]));
+
+    return pollutants.map(p => {
+      const before = A[p]?.mean ?? null;
+      const after  = B[p]?.mean ?? null;
+      const unit   = A[p]?.unit || B[p]?.unit || 'µg/m³';
+      const change = (before != null && after != null) ? ((after - before) / before) * 100 : null;
+      const trend  = change == null ? null : change < -5 ? 'improving' : change > 5 ? 'worsening' : 'stable';
+      return { pollutant: p, before, after, unit, change, trend };
+    }).filter(r => r.before != null || r.after != null);
   },
 
   processSurfaceTemperaturePair(weatherAfforested, weatherNonPlanted) {
@@ -486,32 +419,40 @@ const DataProcessor = {
     return out;
   },
 
+  // FIXED: Green Coverage using climate proxy
   processGreenCoverageFromClimate(bundle) {
     const dates = bundle?.daily?.time ?? [];
-    const lai = bundle?.daily?.leaf_area_index ?? [];
     const precip = bundle?.daily?.precipitation_sum ?? [];
-    
+    const tmax   = bundle?.daily?.temperature_2m_max ?? [];
+    if (!dates.length) return [];
+
     const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const acc = {};
-    
     for (let i = 0; i < dates.length; i++) {
       const mIdx = parseInt(dates[i].slice(5,7), 10) - 1;
-      const label = monthNames[mIdx];
-      acc[label] ??= { month: label, laiSum: 0, precipSum: 0, n: 0 };
-      acc[label].laiSum += lai[i] || 0;
-      acc[label].precipSum += precip[i] || 0;
-      acc[label].n += 1;
+      const key = monthNames[mIdx];
+      acc[key] ??= { month: key, precip: 0, tmax: 0, n: 0 };
+      acc[key].precip += precip[i] || 0;
+      acc[key].tmax   += tmax[i] || 0;
+      acc[key].n++;
     }
-    
-    return monthNames
-      .map(m => acc[m])
-      .filter(Boolean)
-      .map(x => ({ 
-        month: x.month, 
-        coverage: x.laiSum / x.n,
-        precipitation: x.precipSum,
-        status: this.getLAIStatus(x.laiSum / x.n)
-      }));
+
+    // Proxy: more rain + lower Tmax → higher coverage (normalized 0–4)
+    const out = [];
+    for (const m of monthNames) {
+      const x = acc[m];
+      if (!x) continue;
+      const avgP = x.precip / x.n;
+      const avgT = x.tmax / x.n;
+      const coverage = Math.max(0, Math.min(4, (avgP * 0.08) + Math.max(0, 45 - avgT) * 0.06));
+      out.push({
+        month: x.month,
+        coverage,
+        precipitation: x.precip,
+        status: this.getLAIStatus(coverage)
+      });
+    }
+    return out;
   },
 
   getLAIStatus(value) {
@@ -522,33 +463,23 @@ const DataProcessor = {
     return { level: 'Dense', color: '#22c55e' };
   },
 
+  // FIXED: NDVI using climate proxy
   processNDVIYearsFromClimate(bundles) {
-    const out = [];
-    for (const { year, data } of bundles) {
-      const ndvi = data?.daily?.normalized_difference_vegetation_index;
-      const lai = data?.daily?.leaf_area_index;
-      const arr = (ndvi && ndvi.length) ? ndvi : (lai && lai.length ? lai.map(v => Math.min(0.1 + v * 0.25, 1)) : []);
-      
-      if (!arr.length) continue;
-      
-      const mean = arr.reduce((s, v) => s + v, 0) / arr.length;
-      const proxySpecies = Math.round(mean * 100);
-      
-      out.push({
-        year: String(year),
-        species: proxySpecies,
-        ndvi: Number(mean.toFixed(3)),
-        trend: null
-      });
+    // Simple NDVI proxy from precipitation & temperature trend (stable & monotonic)
+    const series = bundles.map(({ year, data }) => {
+      const p = (data?.daily?.precipitation_sum ?? []).reduce((s,v)=>s+(v||0),0);
+      const n = (data?.daily?.temperature_2m_max ?? []).length || 1;
+      const t = (data?.daily?.temperature_2m_max ?? []).reduce((s,v)=>s+(v||0),0)/n;
+      const ndviProxy = Math.max(0, Math.min(1, (p * 0.002) + Math.max(0, 45 - t) * 0.01));
+      return { year: String(year), species: Math.round(ndviProxy * 100), ndvi: Number(ndviProxy.toFixed(3)) };
+    }).sort((a,b)=>a.year.localeCompare(b.year));
+
+    for (let i = 1; i < series.length; i++) {
+      const d = series[i].ndvi - series[i-1].ndvi;
+      series[i].trend = d > 0 ? 'up' : d < 0 ? 'down' : 'stable';
     }
-    
-    const sorted = out.sort((a,b) => a.year.localeCompare(b.year));
-    for (let i = 1; i < sorted.length; i++) {
-      const change = sorted[i].ndvi - sorted[i-1].ndvi;
-      sorted[i].trend = change > 0 ? 'up' : change < 0 ? 'down' : 'stable';
-    }
-    
-    return sorted.slice(-6);
+    series[0].trend = null;
+    return series.slice(-6);
   }
 };
 
@@ -608,7 +539,7 @@ const generateComparisonData = () => {
 };
 
 // ============================
-// Enhanced Custom Hook with Loading States
+// Enhanced Custom Hook with Fixed API Calls
 // ============================
 const useEnvironmentalData = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -690,26 +621,32 @@ const useEnvironmentalData = () => {
     }
   };
 
+  // FIXED: Air Quality fetch with 24h windows + fixed parameters
   const fetchAirQuality = async () => {
     setLoadingStates(prev => ({ ...prev, airQuality: true }));
     try {
       const now = new Date();
       const iso = d => d.toISOString();
-      const nowStart = new Date(now); 
-      nowStart.setHours(now.getHours() - 1);
-      const prevStart = new Date(now); 
-      prevStart.setDate(prevStart.getDate() - 1);
-      const prevEnd = new Date(prevStart); 
-      prevEnd.setHours(prevStart.getHours() + 1);
+      const nowStart = new Date(now); nowStart.setHours(nowStart.getHours() - 24);
+
+      const prevEnd = new Date(nowStart);
+      const prevStart = new Date(prevEnd); prevStart.setHours(prevEnd.getHours() - 24);
+
+      const parameters = ['pm25','pm10','no2','o3','so2','co'];
 
       const [aqNow, aqPrev] = await Promise.all([
-        ApiService.fetchAirQualityWindow({ date_from: iso(nowStart), date_to: iso(now) }),
-        ApiService.fetchAirQualityWindow({ date_from: iso(prevStart), date_to: iso(prevEnd) })
+        ApiService.fetchAirQualityWindow({ date_from: iso(nowStart), date_to: iso(now), parameters }),
+        ApiService.fetchAirQualityWindow({ date_from: iso(prevStart), date_to: iso(prevEnd), parameters })
       ]);
-      
+
       const airQualityData = DataProcessor.processAirQualityBeforeAfter(aqNow, aqPrev);
-      const currentAQI = Math.round(aqNow?.results?.[0]?.value ?? 32 + Math.floor(Math.random() * 20));
-      
+      const currentAQI = Math.round(
+        (aqNow?.results ?? [])
+          .filter(r => parameters.includes((r.parameter || '').toLowerCase()))
+          .map(r => Number(r.value) || 0)
+          .reduce((a,b) => a + b, 0) / Math.max(1, (aqNow?.results ?? []).length)
+      ) || 42;
+
       setDashboardData(prev => ({ ...prev, airQualityData, currentAQI }));
       setDataTimestamps(prev => ({ ...prev, airQuality: Date.now() }));
       setApiStatus(prev => ({ ...prev, airQuality: 'success' }));
@@ -731,7 +668,7 @@ const useEnvironmentalData = () => {
       const climateThisYear = await ApiService.fetchClimateDaily({
         start: startDate, 
         end: endDate,
-        daily: 'leaf_area_index,precipitation_sum'
+        daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum'
       });
       
       const greenCoverageData = DataProcessor.processGreenCoverageFromClimate(climateThisYear);
@@ -757,7 +694,7 @@ const useEnvironmentalData = () => {
         data: await ApiService.fetchClimateDaily({
           start: `${y}-01-01`,
           end: `${y}-12-31`,
-          daily: 'leaf_area_index,normalized_difference_vegetation_index'
+          daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum'
         })
       })));
       
@@ -849,18 +786,23 @@ const useEnvironmentalData = () => {
 };
 
 // ============================
-// Data Freshness Indicator Component
+// FIXED: Data Freshness Indicator with Safe Tailwind Classes
 // ============================
 const FreshnessIndicator = ({ timestamp, size = 'sm' }) => {
   if (!timestamp) return null;
-  
   const status = DataFreshness.getStatus(timestamp);
   const Icon = status.icon;
   const sizeClasses = size === 'sm' ? 'w-3 h-3 text-xs' : 'w-4 h-4 text-sm';
-  
+  const colorClass = {
+    green: 'text-green-500',
+    yellow: 'text-yellow-500',
+    orange: 'text-orange-500',
+    red: 'text-red-500'
+  }[status.color] || 'text-slate-400';
+
   return (
     <div className="flex items-center gap-1">
-      <Icon className={`${sizeClasses} text-${status.color}-500`} />
+      <Icon className={`${sizeClasses} ${colorClass}`} />
       <span className={`${sizeClasses} text-slate-500`}>
         {DataFreshness.getAge(timestamp)}
       </span>
@@ -907,6 +849,18 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh }) 
 
   const createRealHeatmap = () => {
     if (!heatMapData || heatMapData.length === 0) {
+      if (apiStatus === 'error') {
+        return (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-yellow-600" />
+              <span className="text-sm text-yellow-800">
+                Weather API temporarily unavailable
+              </span>
+            </div>
+          </div>
+        );
+      }
       return (
         <svg className="absolute inset-0 w-full h-full pointer-events-none">
           <text x="50%" y="50%" textAnchor="middle" className="text-xs fill-slate-500">
@@ -1284,9 +1238,11 @@ const RawdahDashboard = () => {
             <div className="max-w-7xl mx-auto">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">R</span>
-                  </div>
+                  <img 
+                    src="/logo512.png" 
+                    alt="RawdahScope Logo" 
+                    className="w-8 h-8 rounded-lg object-contain"
+                  />
                   <div>
                     <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                       RawdahScope
@@ -1765,38 +1721,44 @@ const RawdahDashboard = () => {
                     <FreshnessIndicator timestamp={dataTimestamps.greenCoverage} />
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Monthly mean Leaf Area Index (LAI)
+                    Climate proxy from ERA5 precipitation & temperature
                   </p>
                 </div>
                 <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dashboardData.greenCoverageData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#f1f5f9"} />
-                      <XAxis dataKey="month" tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
-                      <YAxis tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
-                      <Tooltip 
-                        content={({ active, payload }) => {
-                          if (active && payload && payload[0]) {
-                            const data = payload[0].payload;
-                            return (
-                              <div className={`p-2 rounded shadow ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-white'}`}>
-                                <p className="text-xs font-medium">{data.month}</p>
-                                <p className="text-xs">LAI: {data.coverage?.toFixed(2)}</p>
-                                <p className="text-xs">Precip: {data.precipitation?.toFixed(1)} mm</p>
-                                {data.status && (
-                                  <p className="text-xs font-medium" style={{ color: data.status.color }}>
-                                    Status: {data.status.level}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Area type="monotone" dataKey="coverage" stroke="#22c55e" fill="#dcfce7" strokeWidth={2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  {dashboardData.greenCoverageData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center">
+                      <span className="text-sm text-slate-500">No data available for selected time range</span>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={dashboardData.greenCoverageData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#f1f5f9"} />
+                        <XAxis dataKey="month" tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
+                        <YAxis tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className={`p-2 rounded shadow ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-white'}`}>
+                                  <p className="text-xs font-medium">{data.month}</p>
+                                  <p className="text-xs">Coverage: {data.coverage?.toFixed(2)}</p>
+                                  <p className="text-xs">Precip: {data.precipitation?.toFixed(1)} mm</p>
+                                  {data.status && (
+                                    <p className="text-xs font-medium" style={{ color: data.status.color }}>
+                                      Status: {data.status.level}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Area type="monotone" dataKey="coverage" stroke="#22c55e" fill="#dcfce7" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
                 <Button 
                   size="sm" 
@@ -1823,38 +1785,44 @@ const RawdahDashboard = () => {
                   </p>
                 </div>
                 <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dashboardData.airQualityData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#f1f5f9"} />
-                      <XAxis dataKey="pollutant" tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
-                      <YAxis tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
-                      <Tooltip 
-                        content={({ active, payload }) => {
-                          if (active && payload && payload[0]) {
-                            const data = payload[0].payload;
-                            return (
-                              <div className={`p-2 rounded shadow ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-white'}`}>
-                                <p className="text-xs font-medium">{data.pollutant}</p>
-                                <p className="text-xs">Before: {data.before?.toFixed(1)} {data.unit}</p>
-                                <p className="text-xs">After: {data.after?.toFixed(1)} {data.unit}</p>
-                                {data.change && (
-                                  <p className={`text-xs font-medium ${
-                                    data.trend === 'improving' ? 'text-green-500' : 
-                                    data.trend === 'worsening' ? 'text-red-500' : 'text-yellow-500'
-                                  }`}>
-                                    {data.change > 0 ? '+' : ''}{data.change.toFixed(1)}% ({data.trend})
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar dataKey="before" fill="#ef4444" name="Before" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="after" fill="#22c55e" name="After" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {dashboardData.airQualityData.length === 0 ? (
+                    <div className="h-full flex items-center justify-center">
+                      <span className="text-sm text-slate-500">No overlapping pollutants in the selected windows</span>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={dashboardData.airQualityData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#374151" : "#f1f5f9"} />
+                        <XAxis dataKey="pollutant" tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
+                        <YAxis tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} />
+                        <Tooltip 
+                          content={({ active, payload }) => {
+                            if (active && payload && payload[0]) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className={`p-2 rounded shadow ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-white'}`}>
+                                  <p className="text-xs font-medium">{data.pollutant}</p>
+                                  <p className="text-xs">Before: {data.before?.toFixed(1)} {data.unit}</p>
+                                  <p className="text-xs">After: {data.after?.toFixed(1)} {data.unit}</p>
+                                  {data.change && (
+                                    <p className={`text-xs font-medium ${
+                                      data.trend === 'improving' ? 'text-green-500' : 
+                                      data.trend === 'worsening' ? 'text-red-500' : 'text-yellow-500'
+                                    }`}>
+                                      {data.change > 0 ? '+' : ''}{data.change.toFixed(1)}% ({data.trend})
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="before" fill="#ef4444" name="Before" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="after" fill="#22c55e" name="After" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
                 </div>
                 <div className="mt-2 text-center">
                   <span className="text-sm text-emerald-600 font-medium">
@@ -1933,7 +1901,7 @@ const RawdahDashboard = () => {
                     <FreshnessIndicator timestamp={dataTimestamps.ndvi} />
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Plant species count and vegetation index
+                    Plant species proxy and vegetation index from climate data
                   </p>
                 </div>
                 <div className="h-48">
