@@ -1084,7 +1084,7 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh }) 
           {heatMapData.map((zone, index) => {
             const x = ((zone.lng - mapBounds.west) / (mapBounds.east - mapBounds.west)) * 100;
             const y = ((mapBounds.north - zone.lat) / (mapBounds.north - mapBounds.south)) * 100;
-            const radius = 12; // Increased radius for better coverage
+            const radius = 5; // Increased radius for better coverage
             
             return (
               <circle
@@ -1267,12 +1267,6 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh }) 
               <span className="font-bold ml-1">
                 {Math.min(...heatMapData.map(d => d.temperature)).toFixed(0)}° - 
                 {Math.max(...heatMapData.map(d => d.temperature)).toFixed(0)}°C
-              </span>
-            </div>
-            <div className="text-xs text-center">
-              <span className="text-slate-600">Confidence:</span>
-              <span className="font-bold ml-1 text-emerald-600">
-                {DataFreshness.getConfidence(timestamp)}%
               </span>
             </div>
           </div>
@@ -1551,18 +1545,23 @@ const RawdahDashboard = () => {
                     <div>Last Updated: {lastUpdated.toLocaleTimeString()}</div>
                   </div>
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsDarkMode(!isDarkMode)}
-                    className={`flex items-center gap-2 ${
-                      isDarkMode 
-                        ? 'text-slate-300 hover:text-white hover:bg-slate-800' 
-                        : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
-                    }`}
-                  >
-                    {isDarkMode ? '☀️' : '🌙'} {isDarkMode ? 'Light' : 'Dark'}
-                  </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsDarkMode(!isDarkMode)}
+                 className={`flex items-center gap-2 ${
+                 isDarkMode 
+                 ? 'text-slate-300 hover:text-white hover:bg-slate-800' 
+                 : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+                  }`}
+                 >
+                 <div className={`w-4 h-4 rounded-full transition-all duration-300 ${
+                  isDarkMode 
+                 ? 'bg-slate-100 border-2 border-slate-300' 
+                 : 'bg-slate-800 border-2 border-slate-700'
+                 }`}></div>
+                 <span className="text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                 </Button>
                 </div>
               </div>
             </div>
@@ -1963,7 +1962,6 @@ const RawdahDashboard = () => {
                     <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                       Surface Heat by District
                     </h3>
-                    {apiStatus.heatMap === 'success' && <Wifi className="w-4 h-4 text-green-500" />}
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                     Ground temperature (°C) - Sensor Data
