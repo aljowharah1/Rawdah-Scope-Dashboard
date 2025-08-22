@@ -253,7 +253,6 @@ const ApiService = {
     return null;
   },
 
-  // FIXED: Air Quality Window with better error handling and methane
   async fetchAirQualityWindow({ 
     lat = 24.7136, lng = 46.6753, radius = 150000, 
     date_from, date_to, parameters = ['pm25','pm10','no2','o3','so2','co','ch4'] 
@@ -1967,7 +1966,7 @@ const RawdahDashboard = () => {
                     {apiStatus.heatMap === 'success' && <Wifi className="w-4 h-4 text-green-500" />}
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Ground temperature in key districts (°C) - Open-Meteo API
+                    Ground temperature (°C) - Sensor Data
                   </p>
                 </div>
                 <div className="h-64">
@@ -2214,7 +2213,6 @@ const RawdahDashboard = () => {
                     <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                       Surface Temperature
                     </h3>
-                    {apiStatus.surfaceTemp === 'success' && <Wifi className="w-4 h-4 text-green-500" />}
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                     Planted vs Non-planted areas (°C)
