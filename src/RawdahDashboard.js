@@ -58,6 +58,11 @@ const chartDataTranslations = {
   parameters: {
     en: { 'PM2.5': 'PM2.5', 'PM10': 'PM10', 'NO2': 'NO₂', 'O3': 'O₃', 'SO2': 'SO₂', 'CO': 'CO' },
     ar: { 'PM2.5': 'جسيمات دقيقة ٢.٥', 'PM10': 'جسيمات دقيقة ١٠', 'NO2': 'ثاني أكسيد النيتروجين', 'O3': 'الأوزون', 'SO2': 'ثاني أكسيد الكبريت', 'CO': 'أول أكسيد الكربون' }
+  },
+  // Area names for ground temperature chart
+  areas: {
+    en: { 'Al-Malaz': 'Al-Malaz', 'Industrial Area': 'Industrial Area', 'Al-Ghadeer': 'Al-Ghadeer' },
+    ar: { 'Al-Malaz': 'الملز', 'Industrial Area': 'المنطقة الصناعية', 'Al-Ghadeer': 'الغدير' }
   }
 };
 
@@ -101,6 +106,11 @@ const prepareChartData = (data, isArabic = false, language = 'en') => {
         translatedItem.parameter = chartDataTranslations.parameters.ar[item.parameter];
       }
       
+      // Translate area labels (used in ground temperature data)
+      if (item.area && chartDataTranslations.areas.ar[item.area]) {
+        translatedItem.area = chartDataTranslations.areas.ar[item.area];
+      }
+      
       return translatedItem;
     });
   }
@@ -126,7 +136,6 @@ const translations = {
     targetingSurfaceReduction: 'Targeting 11.5°C reduction',
     airQualityIndex: 'Air Quality Index',
     networkStatus: 'Network Status',
-    greenCoverage: 'Green Coverage',
     apiStatus: 'API Status',
     overallImpact: 'Overall Environmental Impact',
     progress: 'Progress',
@@ -145,19 +154,17 @@ const translations = {
 
     // Graph titles and descriptions
     co2LevelsTrend: 'CO₂ Levels Trend',
-    co2TrendDesc: 'مراقبة أسبوعية (جزء في المليون) - بيانات المستشعر',
+    co2TrendDesc: 'Weekly monitoring (ppm) - Sensor Data',
     temperatureTrend: 'Temperature Trend',
     tempTrendDesc: 'Weekly average (°C) - Sensor Data',
     surfaceHeatByDistrict: 'Surface Heat by District',
-    surfaceHeatDesc: 'درجة حرارة الأرض (°م) - بيانات المستشعر',
-    greenCoverageGrowth: 'Green Coverage Growth',
-    greenCoverageDesc: 'Climate proxy from ERA5 precipitation & temperature',
+    surfaceHeatDesc: 'Ground temperature (°C) - Sensor Data',
     airQualityComparison: 'Air Quality: Before vs After Afforestation',
-    airQualityDesc: 'قياسات OpenAQ في الوقت الحقيقي (ميكروغرام/م³)',
+    airQualityDesc: 'OpenAQ real-time measurements (μg/m³)',
     surfaceTemperature: 'Surface Temperature',
     surfaceTempCompareDesc: 'Al-Malaz (Afforested) vs Industrial Area (Non-afforested)',
     biodiversityTracking: 'NDVI Satellite Tracking',
-    biodiversityDesc: 'Real vegetation index from satellite data (NASA MODIS & Copernicus)',
+    biodiversityDesc: 'Real satellite vegetation index for Riyadh from NASA MODIS & Copernicus (24.7136°N, 46.6753°E)',
     sensorHealthMetrics: 'Sensor Health Metrics',
     sensorHealthDesc: 'Network status and performance indicators',
 
@@ -172,11 +179,16 @@ const translations = {
     // Map section
     heatDistribution: 'Riyadh Heat Distribution Map',
     liveTemperatureData: 'Live Temperature Data',
+    liveTemperatureDesc: 'Live temperature data from Open-Meteo API (Updates every 10 minutes)',
     loading: 'Loading',
     temperatureScale: 'Temperature Scale',
     sensorNetwork: 'Active Sensor Coverage',
     sensorNetworkCoverage: 'Sensor Network Coverage',
     realTimeEnvironmental: 'Real-time environmental monitoring network',
+
+    // Chart labels  
+    current: 'Current',
+    forecasted: 'Forecasted',
 
     // Sensor table headers
     stationId: 'Station ID',
@@ -303,7 +315,6 @@ const translations = {
     
     // Widget names for loading
     heatMap: 'Heat Map',
-    greenCoverageWidget: 'Green Coverage',
     airQualityWidget: 'Air Quality',
     surfaceTemp: 'Surface Temp',
     
@@ -335,7 +346,6 @@ const translations = {
     targetingSurfaceReduction: 'الهدف: خفض بمقدار 11.5°م',
     airQualityIndex: 'مؤشر جودة الهواء',
     networkStatus: 'حالة الشبكة',
-    greenCoverage: 'الغطاء الأخضر',
     apiStatus: 'حالة واجهات البرمجة (API)',
     overallImpact: 'الأثر البيئي الكلي',
     progress: 'التقدم',
@@ -359,14 +369,12 @@ const translations = {
     tempTrendDesc: 'متوسط أسبوعي (°م) - بيانات المستشعر',
     surfaceHeatByDistrict: 'حرارة السطح حسب الحي',
     surfaceHeatDesc: 'درجة حرارة الأرض (°م) - بيانات المستشعر',
-    greenCoverageGrowth: 'نمو الغطاء الأخضر',
-    greenCoverageDesc: 'مؤشر مناخي مستمد من بيانات ERA5 للأمطار ودرجة الحرارة',
     airQualityComparison: 'جودة الهواء: قبل التشجير وبعده',
     airQualityDesc: 'قياسات OpenAQ في الوقت الحقيقي (ميكروغرام/م³)',
     surfaceTemperature: 'درجة حرارة السطح',
     surfaceTempCompareDesc: 'الملز (مشجَّر) مقابل المنطقة الصناعية (غير مشجَّر)',
     biodiversityTracking: 'تتبّع مؤشر NDVI بالأقمار الصناعية',
-    biodiversityDesc: 'مؤشر الغطاء النباتي الحقيقي من الأقمار الصناعية (NASA MODIS & Copernicus)',
+    biodiversityDesc: 'مؤشر الغطاء النباتي الحقيقي للرياض من الأقمار الصناعية NASA MODIS & Copernicus (24.7136°شمال، 46.6753°شرق)',
     sensorHealthMetrics: 'مؤشرات صحة المستشعرات',
     sensorHealthDesc: 'حالة الشبكة ومؤشرات الأداء',
 
@@ -381,11 +389,16 @@ const translations = {
     // Map section
     heatDistribution: 'خريطة توزيع الحرارة في الرياض',
     liveTemperatureData: 'بيانات درجة الحرارة المباشرة',
+    liveTemperatureDesc: 'بيانات درجة الحرارة المباشرة من Open-Meteo API (تحديث كل 10 دقائق)',
     loading: 'جارٍ التحميل',
     temperatureScale: 'مقياس درجة الحرارة',
     sensorNetwork: 'تغطية المستشعرات النشطة',
     sensorNetworkCoverage: 'تغطية شبكة المستشعرات',
     realTimeEnvironmental: 'شبكة مراقبة بيئية في الوقت الحقيقي',
+
+    // Chart labels
+    current: 'حقيقي',
+    forecasted: 'متوقع',
 
     // Sensor table headers
     stationId: 'معرّف المحطة',
@@ -598,7 +611,6 @@ const translations = {
     
     // Widget names for loading
     heatMap: 'خريطة الحرارة',
-    greenCoverageWidget: 'الغطاء الأخضر',
     airQualityWidget: 'جودة الهواء',
     surfaceTemp: 'درجة حرارة السطح',
     
@@ -1387,163 +1399,10 @@ const DataProcessor = {
     return weekData;
   },
   
-  // Enhanced green coverage processing specifically calibrated for Riyadh's arid climate
-  processGreenCoverageFromClimate(bundle) {
-    const dates = bundle?.daily?.time ?? [];
-    const precip = bundle?.daily?.precipitation_sum ?? [];
-    const tmax = bundle?.daily?.temperature_2m_max ?? [];
-    
-    if (!dates.length) {
-      // No API data available - return empty array
-      console.warn('No climate data available for green coverage calculation');
-      return [];
-    }
-    
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const acc = {};
-    
-    for (let i = 0; i < dates.length; i++) {
-      const mIdx = parseInt(dates[i].slice(5,7), 10) - 1;
-      const key = monthNames[mIdx];
-      
-      acc[key] ??= { month: key, precip: 0, tmax: 0, n: 0 };
-      acc[key].precip += precip[i] || 0;
-      acc[key].tmax += tmax[i] || 0;
-      acc[key].n++;
-    }
-    
-    const out = [];
-    for (let mIdx = 0; mIdx < monthNames.length; mIdx++) {
-      const m = monthNames[mIdx];
-      const x = acc[m];
-      
-      if (!x) {
-        // Fill missing months with typical Riyadh data
-        const typicalData = this.getRiyadhTypicalMonth(mIdx);
-        out.push(typicalData);
-        continue;
-      }
-      
-      const avgP = x.precip / x.n;
-      const avgT = x.tmax / x.n;
-      
-      // Riyadh-specific green coverage calculation
-      // Base coverage for desert vegetation
-      let coverage = 0.5; // Minimal desert vegetation baseline
-      
-      // Precipitation effect (critical in arid climates)
-      coverage += Math.min(2.0, avgP * 0.15); // Every mm of rain has significant impact
-      
-      // Temperature stress (extreme heat significantly reduces vegetation)
-      const tempStress = Math.max(0, (avgT - 35) * 0.1); // Stress above 35°C
-      coverage -= tempStress;
-      
-      // Urban irrigation and afforestation bonus (Riyadh's green initiatives)
-      const irrigationBonus = 1.2; // Urban irrigation maintains vegetation
-      coverage += irrigationBonus;
-      
-      // Seasonal adjustments for Riyadh
-      const seasonalMultiplier = this.getRiyadhSeasonalMultiplier(mIdx);
-      coverage *= seasonalMultiplier;
-      
-      // Realistic range for Riyadh urban areas (0.5 to 3.5)
-      coverage = Math.max(0.5, Math.min(3.5, coverage));
-      
-      out.push({
-        month: x.month,
-        coverage: Number(coverage.toFixed(2)),
-        precipitation: Number(x.precip.toFixed(1)),
-        avgTemperature: Number((x.tmax / x.n).toFixed(1)),
-        status: this.getRiyadhLAIStatus(coverage),
-        city: 'Riyadh',
-        climateZone: 'BWh (Hot Desert)',
-        irrigated: true,
-        afforestationProgram: 'Saudi Green Initiative',
-        vegetationType: coverage < 1.5 ? 'Desert Shrubs + Irrigation' : 
-                       coverage < 2.5 ? 'Urban Green Spaces' : 
-                       'Dense Urban Forest'
-      });
-    }
-    
-    return out;
-  },
   
-  // Generate realistic Riyadh green coverage data when API data is unavailable
-  generateRiyadhGreenCoverageData() {
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const riyadhTypicalPrecip = [10, 8, 15, 25, 5, 0, 0, 0, 0, 2, 8, 12]; // mm per month
-    const riyadhTypicalTemp = [20, 23, 28, 35, 42, 46, 48, 47, 43, 36, 28, 22]; // °C max temp
-    
-    return monthNames.map((month, i) => {
-      const precip = riyadhTypicalPrecip[i] + (Math.random() - 0.5) * 10;
-      const temp = riyadhTypicalTemp[i] + (Math.random() - 0.5) * 4;
-      
-      // Calculate coverage based on Riyadh's specific conditions
-      let coverage = 0.8; // Base urban vegetation with irrigation
-      coverage += Math.max(0, precip * 0.12); // Precipitation boost
-      coverage -= Math.max(0, (temp - 35) * 0.08); // Temperature stress
-      coverage += this.getRiyadhSeasonalMultiplier(i) * 0.5; // Seasonal variation
-      
-      coverage = Math.max(0.5, Math.min(3.2, coverage));
-      
-      return {
-        month,
-        coverage: Number(coverage.toFixed(2)),
-        precipitation: Math.max(0, Number(precip.toFixed(1))),
-        avgTemperature: Number(temp.toFixed(1)),
-        status: this.getRiyadhLAIStatus(coverage),
-        city: 'Riyadh',
-        climateZone: 'BWh (Hot Desert)',
-        irrigated: true,
-        afforestationProgram: 'Saudi Green Initiative',
-        dataSource: 'Realistic simulation based on Riyadh climate patterns'
-      };
-    });
-  },
   
-  // Get typical month data for Riyadh
-  getRiyadhTypicalMonth(monthIndex) {
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const riyadhTypicalPrecip = [10, 8, 15, 25, 5, 0, 0, 0, 0, 2, 8, 12];
-    const riyadhTypicalTemp = [20, 23, 28, 35, 42, 46, 48, 47, 43, 36, 28, 22];
-    
-    const precip = riyadhTypicalPrecip[monthIndex];
-    const temp = riyadhTypicalTemp[monthIndex];
-    
-    let coverage = 0.8 + (precip * 0.1) - Math.max(0, (temp - 35) * 0.06);
-    coverage *= this.getRiyadhSeasonalMultiplier(monthIndex);
-    coverage = Math.max(0.5, Math.min(3.0, coverage));
-    
-    return {
-      month: monthNames[monthIndex],
-      coverage: Number(coverage.toFixed(2)),
-      precipitation: precip,
-      avgTemperature: temp,
-      status: this.getRiyadhLAIStatus(coverage),
-      city: 'Riyadh',
-      climateZone: 'BWh (Hot Desert)',
-      dataSource: 'Typical Riyadh climate data'
-    };
-  },
   
-  // Riyadh-specific seasonal multipliers
-  getRiyadhSeasonalMultiplier(monthIndex) {
-    // Winter (Dec-Feb): Better growth due to cooler temps
-    // Spring (Mar-May): Good growth with some rain
-    // Summer (Jun-Aug): Stress period, irrigation dependent
-    // Autumn (Sep-Nov): Recovery period
-    const multipliers = [1.2, 1.3, 1.4, 1.1, 0.9, 0.7, 0.6, 0.7, 0.8, 1.0, 1.1, 1.2];
-    return multipliers[monthIndex];
-  },
   
-  // Riyadh-specific LAI status (adjusted for arid climate expectations)
-  getRiyadhLAIStatus(value) {
-    if (value < 1.0) return { level: 'Desert Baseline', color: '#dc2626', description: 'Natural desert vegetation' };
-    if (value < 1.8) return { level: 'Light Urban Green', color: '#ea580c', description: 'Basic urban landscaping' };
-    if (value < 2.5) return { level: 'Good Urban Forest', color: '#ca8a04', description: 'Well-established green spaces' };
-    if (value < 3.2) return { level: 'Dense Urban Forest', color: '#16a34a', description: 'Mature afforestation areas' };
-    return { level: 'Exceptional Green Cover', color: '#15803d', description: 'Outstanding urban forest' };
-  },
   
   // Keep original LAI status for backward compatibility
   getLAIStatus(value) {
@@ -2029,7 +1888,6 @@ const useEnvironmentalData = () => {
     airQualityData: [],
     biodiversityData: [],
     surfaceTempData: [],
-    greenCoverageData: [],
     currentAQI: 32 + Math.floor(Math.random() * 20)
   });
   
@@ -2037,7 +1895,6 @@ const useEnvironmentalData = () => {
     heatMap: true,
     airQuality: true,
     surfaceTemp: true,
-    greenCoverage: true,
     ndvi: true
   });
   
@@ -2045,7 +1902,6 @@ const useEnvironmentalData = () => {
     heatMap: null,
     airQuality: null,
     surfaceTemp: null,
-    greenCoverage: null,
     ndvi: null
   });
   
@@ -2054,7 +1910,6 @@ const useEnvironmentalData = () => {
     airQuality: 'loading',
     ndvi: 'loading',
     surfaceTemp: 'loading',
-    greenCoverage: 'loading'
   });
   
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -2176,61 +2031,6 @@ const useEnvironmentalData = () => {
     }
   };
   
-  // Enhanced green coverage fetching specifically for Riyadh coordinates
-  const fetchGreenCoverage = async () => {
-    setLoadingStates(prev => ({ ...prev, greenCoverage: true }));
-    try {
-      const startYear = new Date().getFullYear();
-      const startDate = `${startYear}-01-01`;
-      const endDate = new Date().toISOString().slice(0,10);
-      
-      // Specific coordinates for Riyadh (King Fahd District - central urban area)
-      const riyadhCoordinates = {
-        lat: 24.7136, // Riyadh city center
-        lng: 46.6753  // Riyadh city center
-      };
-      
-      console.log(`Fetching green coverage data for Riyadh (${riyadhCoordinates.lat}, ${riyadhCoordinates.lng})`);
-      
-      const climateThisYear = await ApiService.fetchClimateDaily({
-        lat: riyadhCoordinates.lat,
-        lng: riyadhCoordinates.lng,
-        start: startDate,
-        end: endDate,
-        daily: 'temperature_2m_max,temperature_2m_min,precipitation_sum'
-      });
-      
-      const greenCoverageData = DataProcessor.processGreenCoverageFromClimate(climateThisYear);
-      
-      // Add Riyadh-specific metadata to each month
-      const enhancedGreenCoverageData = greenCoverageData.map(item => ({
-        ...item,
-        city: 'Riyadh',
-        country: 'Saudi Arabia',
-        coordinates: riyadhCoordinates,
-        climateZone: 'BWh (Hot Desert Climate)',
-        afforestationProgram: 'Saudi Green Initiative & Vision 2030',
-        dataSource: climateThisYear?.source || 'Real climate data for Riyadh',
-        urbanGreenStrategy: 'Drought-resistant species + efficient irrigation'
-      }));
-      
-      setDashboardData(prev => ({ ...prev, greenCoverageData: enhancedGreenCoverageData }));
-      setDataTimestamps(prev => ({ ...prev, greenCoverage: Date.now() }));
-      setApiStatus(prev => ({ ...prev, greenCoverage: 'success' }));
-      
-      console.log('Green coverage data processed for Riyadh:', enhancedGreenCoverageData);
-    } catch (error) {
-      console.error('Green coverage fetch error for Riyadh:', error);
-      
-      // Do not generate fallback data - keep error state
-      setApiStatus(prev => ({ ...prev, greenCoverage: 'error' }));
-      
-      // Log error but don't set any data - UI will show "waiting for data" state
-      console.error('Green coverage calculation failed - waiting for real API data');
-    } finally {
-      setLoadingStates(prev => ({ ...prev, greenCoverage: false }));
-    }
-  };
   
   // Real NDVI fetching from satellite data for Riyadh coordinates
   const fetchNDVI = async () => {
@@ -2323,7 +2123,6 @@ const useEnvironmentalData = () => {
       fetchHeatMapData(),
       fetchSurfaceTemp(),
       fetchAirQuality(),
-      fetchGreenCoverage(),
       fetchNDVI()
     ]);
     
@@ -2341,9 +2140,6 @@ const useEnvironmentalData = () => {
         break;
       case 'airQuality':
         await fetchAirQuality();
-        break;
-      case 'greenCoverage':
-        await fetchGreenCoverage();
         break;
       case 'ndvi':
         await fetchNDVI();
@@ -3608,17 +3404,6 @@ const RawdahDashboard = () => {
                       <div>
                         <div className={`font-medium transition-colors duration-300 ${
                           isDarkMode ? 'text-slate-300' : 'text-slate-600'
-                        }`}>{t.greenCoverage}</div>
-                        <div className="flex items-center gap-1 mt-1">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                          <span className={`transition-colors duration-300 ${
-                            isDarkMode ? 'text-white' : 'text-slate-800'
-                          }`}>+{((dashboardData.greenCoverageData[dashboardData.greenCoverageData.length - 1]?.coverage || 0) * 42).toFixed(0)}%</span>
-                        </div>
-                      </div>
-                      <div>
-                        <div className={`font-medium transition-colors duration-300 ${
-                          isDarkMode ? 'text-slate-300' : 'text-slate-600'
                         }`}>{t.apiStatus}</div>
                         <div className="flex items-center gap-1 mt-1">
                           {Object.values(apiStatus).filter(s => s === 'success').length > 0 ? (
@@ -3790,7 +3575,7 @@ const RawdahDashboard = () => {
                   {t.heatDistribution}
                 </h3>
                 <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                  بيانات درجة الحرارة المباشرة من Open-Meteo API (تحديث كل 10 دقائق)
+                  {t.liveTemperatureDesc}
                 </p>
               </div>
               {apiStatus.heatMap === 'error' && (
@@ -3818,7 +3603,7 @@ const RawdahDashboard = () => {
                   <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                     {t.co2LevelsTrend}
                   </h3>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>مراقبة أسبوعية (جزء في المليون) - بيانات المستشعر</p>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{t.co2TrendDesc}</p>
                 </div>
                 <div className="h-64">
                   {(() => {
@@ -3863,7 +3648,7 @@ const RawdahDashboard = () => {
                                     <p className="text-xs">CO₂: {data.value} ppm</p>
                                     <p className="text-xs">Target: {data.target} ppm</p>
                                     <p className="text-xs text-blue-600 font-medium">
-                                      {data.isFuture ? '📊 Projected' : '📊 Current'}
+                                      📊 {data.isFuture ? t.forecasted : t.current}
                                     </p>
                                   </div>
                                 );
@@ -3956,7 +3741,7 @@ const RawdahDashboard = () => {
                                     <p className="text-xs">Temperature: {data.current}°C</p>
                                     <p className="text-xs">Target: {data.target}°C</p>
                                     <p className="text-xs text-orange-600 font-medium">
-                                      {data.isFuture ? '📊 Forecast' : '📊 Observed'}
+                                      📊 {data.isFuture ? t.forecasted : t.current}
                                     </p>
                                   </div>
                                 );
@@ -4007,7 +3792,7 @@ const RawdahDashboard = () => {
                     </h3>
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    درجة حرارة الأرض (°م) - بيانات المستشعر
+                    {t.surfaceHeatDesc}
                   </p>
                 </div>
                 <div className="h-64">
@@ -4070,133 +3855,7 @@ const RawdahDashboard = () => {
             </div>
             
             {/* Real-Time Environmental Metrics with Individual Loading States */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              <Card isDarkMode={isDarkMode} className="relative">
-                {loadingStates.greenCoverage && <LoadingOverlay isLoading={true} widget={t.greenCoverageWidget} t={t} />}
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                      {t.greenCoverageGrowth}
-                    </h3>
-                    {apiStatus.greenCoverage === 'success' && <Wifi className="w-4 h-4 text-green-500" />}
-                    <FreshnessIndicator timestamp={dataTimestamps.greenCoverage} />
-                  </div>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Riyadh green coverage from real climate data & Saudi Green Initiative progress
-                  </p>
-                </div>
-                <div className="h-64">
-                  {dashboardData.greenCoverageData.length === 0 ? (
-                    <div className="h-full flex items-center justify-center">
-                      <span className="text-sm text-slate-500">No data available for selected time range</span>
-                    </div>
-                  ) : (() => {
-                    // Split data into actual (up to current month) and projected (after current month)
-                    const currentDate = new Date();
-                    const currentMonthIndex = currentDate.getMonth(); // 0-based (0 = Jan, 8 = Sep)
-                    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                    
-                    // Create dataset with separate actual and projected values for smooth connected line
-                    const flowingData = dashboardData.greenCoverageData.map((item, index) => {
-                      const itemMonthIndex = monthNames.indexOf(item.month);
-                      const isActual = itemMonthIndex <= currentMonthIndex; // Sep (8) and before are actual
-                      const isConnectionPoint = itemMonthIndex === currentMonthIndex; // September is connection point
-                      
-                      return {
-                        ...item,
-                        // Actual data - only for current and past months
-                        actualCoverage: isActual ? item.coverage : null,
-                        // Projected data - for future months AND the connection point (current month)
-                        projectedCoverage: (!isActual || isConnectionPoint) ? item.coverage : null,
-                        // Style markers for tooltips
-                        isActual: isActual,
-                        segmentType: isActual ? 'actual' : 'projected'
-                      };
-                    });
-                    
-                    return (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={prepareChartData(flowingData, language === 'ar', language)}>
-                          <CartesianGrid 
-                            strokeDasharray="3 3" 
-                            stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
-                          />
-                          <XAxis 
-                            dataKey="month" 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
-                          />
-                          <YAxis 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
-                            orientation={language === 'ar' ? 'right' : 'left'}
-                          />
-                          <Tooltip
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length > 0) {
-                                const data = payload[0].payload;
-                                
-                                return (
-                                  <div className={`p-2 rounded shadow ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-white'}`}>
-                                    <p className="text-xs font-medium">{data.month}</p>
-                                    <p className="text-xs text-blue-600 font-medium">
-                                      📊 {data.isActual ? 'Actual Data' : 'Projected Data'}
-                                    </p>
-                                    <p className="text-xs">{t.coverage}: {data.coverage?.toFixed(2)}</p>
-                                    <p className="text-xs">{t.precipitation}: {data.precipitation?.toFixed(1)} {t.mmUnit}</p>
-                                    {data.status && (
-                                      <p className="text-xs font-medium" style={{ color: data.status.color }}>
-                                        {t.statusLabel}: {data.status.level}
-                                      </p>
-                                    )}
-                                    {!data.isActual && (
-                                      <p className="text-xs text-orange-600">🔮 Estimated based on trends</p>
-                                    )}
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          {/* Actual data line - solid and smooth */}
-                          <Line 
-                            type="monotone" 
-                            dataKey="actualCoverage"
-                            stroke="#16a34a" 
-                            strokeWidth={3}
-                            name="Actual Green Coverage"
-                            connectNulls={false}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            dot={false}
-                            activeDot={{ r: 4, fill: '#16a34a' }}
-                          />
-                          {/* Projected data line - dashed and smooth */}
-                          <Line 
-                            type="monotone" 
-                            dataKey="projectedCoverage"
-                            stroke="#65a30d" 
-                            strokeWidth={3}
-                            strokeDasharray="8 4"
-                            name="Projected Growth"
-                            connectNulls={false}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            dot={false}
-                            activeDot={{ r: 4, fill: '#65a30d' }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    );
-                  })()}
-                </div>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={() => refreshWidget('greenCoverage')}
-                  className="absolute bottom-2 right-2"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                </Button>
-              </Card>
+            <div className="grid grid-cols-1 gap-6 mb-8">
               
               {/* Air Quality Chart Component - Enhanced for real data */}
               <Card isDarkMode={isDarkMode} className="relative">
@@ -4217,8 +3876,8 @@ const RawdahDashboard = () => {
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                     {apiStatus.airQuality === 'success' 
-                      ? 'قياسات OpenAQ في الوقت الحقيقي (ميكروغرام/م³)' 
-                      : 'بيانات جودة الهواء في الوقت الحقيقي (ميكروغرام/م³)'}
+                      ? t.airQualityDesc 
+                      : t.airQualityDesc}
                   </p>
                 </div>
                 <div className="h-64">
@@ -4342,7 +4001,7 @@ const RawdahDashboard = () => {
                     </h3>
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Al-Malaz (Planted) vs Industrial Area (Non-planted)
+                    {t.surfaceTempCompareDesc}
                   </p>
                   <FreshnessIndicator timestamp={dataTimestamps.surfaceTemp} />
                 </div>
@@ -4405,7 +4064,7 @@ const RawdahDashboard = () => {
                         dataKey="plantedCurrent" 
                         stroke="#22c55e" 
                         strokeWidth={2} 
-                        name="Al-Malaz (Current)"
+                        name={language === 'ar' ? `الملز (${t.current})` : `Al-Malaz (${t.current})`}
                         connectNulls={false}
                         dot={(props) => {
                           const { payload } = props;
@@ -4418,7 +4077,7 @@ const RawdahDashboard = () => {
                         dataKey="nonPlantedCurrent" 
                         stroke="#ef4444" 
                         strokeWidth={2} 
-                        name="Industrial Area (Current)"
+                        name={language === 'ar' ? `المنطقة الصناعية (${t.current})` : `Industrial Area (${t.current})`}
                         connectNulls={false}
                         dot={(props) => {
                           const { payload } = props;
@@ -4434,7 +4093,7 @@ const RawdahDashboard = () => {
                         stroke="#22c55e" 
                         strokeWidth={2} 
                         strokeDasharray="5 5"
-                        name="Al-Malaz (Projected)"
+                        name={language === 'ar' ? `الملز (${t.forecasted})` : `Al-Malaz (${t.forecasted})`}
                         connectNulls={false}
                         dot={(props) => {
                           const { payload } = props;
@@ -4448,7 +4107,7 @@ const RawdahDashboard = () => {
                         stroke="#ef4444" 
                         strokeWidth={2} 
                         strokeDasharray="5 5"
-                        name="Industrial Area (Projected)"
+                        name={language === 'ar' ? `المنطقة الصناعية (${t.forecasted})` : `Industrial Area (${t.forecasted})`}
                         connectNulls={false}
                         dot={(props) => {
                           const { payload } = props;
@@ -4477,7 +4136,7 @@ const RawdahDashboard = () => {
                     <FreshnessIndicator timestamp={dataTimestamps.ndvi} />
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Real satellite vegetation index for Riyadh from NASA MODIS & Copernicus (24.7136°N, 46.6753°E)
+                    {t.biodiversityDesc}
                   </p>
                 </div>
                 <div className="h-48">
@@ -4550,7 +4209,7 @@ const RawdahDashboard = () => {
                         dashboardData.biodiversityData[dashboardData.biodiversityData.length - 1]?.ndvi > 
                         dashboardData.biodiversityData[0]?.ndvi ? 'Improving' : 'Stable'}
                     </span>
-                    <p className="text-xs text-slate-500 mt-1">Real satellite vegetation index from NASA MODIS & Copernicus</p>
+                    <p className="text-xs text-slate-500 mt-1">{t.biodiversityDesc}</p>
                   </div>
                 </div>
                 <Button 
