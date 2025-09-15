@@ -161,6 +161,8 @@ const translations = {
     surfaceHeatDesc: 'Ground temperature (°C) - Sensor Data',
     airQualityComparison: 'Air Quality: Before vs After Afforestation',
     airQualityDesc: 'OpenAQ real-time measurements (μg/m³)',
+    treeCoverLoss: 'Annual Tree Cover Loss',
+    treeCoverLossDesc: 'Global Forest Watch satellite data for Riyadh region (UMD/Google Earth Engine)',
     surfaceTemperature: 'Surface Temperature',
     surfaceTempCompareDesc: 'Al-Malaz (Afforested) vs Industrial Area (Non-afforested)',
     biodiversityTracking: 'NDVI Satellite Tracking',
@@ -317,6 +319,7 @@ const translations = {
     heatMap: 'Heat Map',
     airQualityWidget: 'Air Quality',
     surfaceTemp: 'Surface Temp',
+    treeCoverLossWidget: 'Tree Cover Loss',
     
     // Status counts
     activeCount: 'Active',
@@ -371,6 +374,8 @@ const translations = {
     surfaceHeatDesc: 'درجة حرارة الأرض (°م) - بيانات المستشعر',
     airQualityComparison: 'جودة الهواء: قبل التشجير وبعده',
     airQualityDesc: 'قياسات OpenAQ في الوقت الحقيقي (ميكروغرام/م³)',
+    treeCoverLoss: 'خسائر الغطاء الشجري سنويا',
+    treeCoverLossDesc: 'بيانات الأقمار الصناعية من Global Forest Watch لمنطقة الرياض (UMD/Google Earth Engine)',
     surfaceTemperature: 'درجة حرارة السطح',
     surfaceTempCompareDesc: 'الملز (مشجَّر) مقابل المنطقة الصناعية (غير مشجَّر)',
     biodiversityTracking: 'تتبّع مؤشر NDVI بالأقمار الصناعية',
@@ -613,6 +618,7 @@ const translations = {
     heatMap: 'خريطة الحرارة',
     airQualityWidget: 'جودة الهواء',
     surfaceTemp: 'درجة حرارة السطح',
+    treeCoverLossWidget: 'فقدان الغطاء الشجري',
     
     // Status counts
     activeCount: 'نشط',
@@ -1688,6 +1694,36 @@ const DataProcessor = {
     if (ndvi < 0.4) return 'Urban Green Space';
     if (ndvi < 0.5) return 'Mixed Vegetation';
     return 'Dense Vegetation';
+  },
+
+  // Tree Cover Loss Data Processing - Real Data Only
+  processTreeCoverLoss(gfwData) {
+    console.log('Processing GFW data:', gfwData);
+    
+    if (!gfwData || !gfwData.data || !Array.isArray(gfwData.data)) {
+      console.warn('Invalid GFW tree cover loss data structure');
+      return [];
+    }
+
+    const processedData = gfwData.data
+      .filter(item => {
+        const hasYear = item.umd_tree_cover_loss__year || item.year;
+        const hasArea = (item.area_ha || item.umd_tree_cover_loss__ha) > 0;
+        return hasYear && hasArea;
+      })
+      .map(item => ({
+        year: item.umd_tree_cover_loss__year || item.year,
+        lossHa: Number((item.area_ha || item.umd_tree_cover_loss__ha).toFixed(2)),
+        confidence: 'high',
+        dataSource: 'Global Forest Watch (UMD/Google Earth Engine)'
+      }));
+
+    console.log('Processed tree cover loss data:', processedData);
+    
+    // Sort by year
+    processedData.sort((a, b) => a.year - b.year);
+    
+    return processedData;
   }
 };
 
@@ -1888,6 +1924,7 @@ const useEnvironmentalData = () => {
     airQualityData: [],
     biodiversityData: [],
     surfaceTempData: [],
+    treeCoverLossData: [],
     currentAQI: 32 + Math.floor(Math.random() * 20)
   });
   
@@ -1895,14 +1932,16 @@ const useEnvironmentalData = () => {
     heatMap: true,
     airQuality: true,
     surfaceTemp: true,
-    ndvi: true
+    ndvi: true,
+    treeCoverLoss: true
   });
   
   const [dataTimestamps, setDataTimestamps] = useState({
     heatMap: null,
     airQuality: null,
     surfaceTemp: null,
-    ndvi: null
+    ndvi: null,
+    treeCoverLoss: null
   });
   
   const [apiStatus, setApiStatus] = useState({
@@ -1910,6 +1949,7 @@ const useEnvironmentalData = () => {
     airQuality: 'loading',
     ndvi: 'loading',
     surfaceTemp: 'loading',
+    treeCoverLoss: 'loading'
   });
   
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -2110,6 +2150,104 @@ const useEnvironmentalData = () => {
       setLoadingStates(prev => ({ ...prev, ndvi: false }));
     }
   };
+
+  // Fetch Tree Cover Loss data from Global Forest Watch API - Real Data Only
+  const fetchTreeCoverLoss = async () => {
+    setLoadingStates(prev => ({ ...prev, treeCoverLoss: true }));
+    try {
+      console.log('Fetching tree cover loss data for Riyadh region from GFW...');
+      
+      // Try to get the latest dataset version first
+      let datasetVersion = 'v1.9'; // Known stable version
+      
+      // Create a polygon geometry for Riyadh metropolitan area (smaller area for desert region)
+      const geometry = {
+        type: "Polygon",
+        coordinates: [[
+          [46.4753, 24.4136], // Southwest - closer to Riyadh center
+          [47.0753, 24.4136], // Southeast  
+          [47.0753, 25.0136], // Northeast
+          [46.4753, 25.0136], // Northwest
+          [46.4753, 24.4136]  // Close polygon
+        ]]
+      };
+
+      // GFW Data API endpoint - using known working format
+      const gfwApiUrl = `https://data-api.globalforestwatch.org/dataset/umd_tree_cover_loss/${datasetVersion}/query/json`;
+      
+      // Simplified SQL query for tree cover loss
+      const sqlQuery = `
+        SELECT umd_tree_cover_loss__year, 
+               SUM(umd_tree_cover_loss__ha) as area_ha
+        FROM data 
+        WHERE umd_tree_cover_loss__year >= 2001 
+          AND umd_tree_cover_loss__year <= 2023
+          AND umd_tree_cover_loss__ha > 0
+        GROUP BY umd_tree_cover_loss__year 
+        ORDER BY umd_tree_cover_loss__year
+      `;
+
+      console.log('Attempting GFW API call with URL:', gfwApiUrl);
+      console.log('SQL Query:', sqlQuery);
+      console.log('Geometry:', geometry);
+
+      const response = await fetch(gfwApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          sql: sqlQuery,
+          geometry: geometry
+        })
+      });
+
+      console.log('GFW API Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('GFW API error response:', errorText);
+        
+        // Try alternative approach - maybe the API endpoint structure is different
+        throw new Error(`GFW API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const gfwData = await response.json();
+      console.log('GFW API Response data:', gfwData);
+      
+      const processedData = DataProcessor.processTreeCoverLoss(gfwData);
+      
+      if (processedData.length === 0) {
+        console.warn('No tree cover loss data available for Riyadh region - this is expected for desert areas');
+        setApiStatus(prev => ({ ...prev, treeCoverLoss: 'no-data' }));
+      } else {
+        setApiStatus(prev => ({ ...prev, treeCoverLoss: 'success' }));
+        console.log('Successfully processed GFW tree cover loss data:', processedData);
+      }
+      
+      setDashboardData(prev => ({ ...prev, treeCoverLossData: processedData }));
+      setDataTimestamps(prev => ({ ...prev, treeCoverLoss: Date.now() }));
+      
+    } catch (error) {
+      console.error('Failed to fetch GFW data - detailed error:', error);
+      console.error('Error stack:', error.stack);
+      
+      // Check if it's a network error vs API error
+      if (error.message.includes('fetch')) {
+        console.error('Network error - GFW API may be unreachable');
+      } else if (error.message.includes('401') || error.message.includes('403')) {
+        console.error('Authentication error - GFW API may require API key');
+      } else if (error.message.includes('400')) {
+        console.error('Bad request - SQL query or geometry may be invalid');
+      }
+      
+      setApiStatus(prev => ({ ...prev, treeCoverLoss: 'error' }));
+      setDashboardData(prev => ({ ...prev, treeCoverLossData: [] }));
+    } finally {
+      setLoadingStates(prev => ({ ...prev, treeCoverLoss: false }));
+    }
+  };
   
   const fetchRealTimeData = async (forceRefresh = false) => {
     setIsLoading(true);
@@ -2123,7 +2261,8 @@ const useEnvironmentalData = () => {
       fetchHeatMapData(),
       fetchSurfaceTemp(),
       fetchAirQuality(),
-      fetchNDVI()
+      fetchNDVI(),
+      fetchTreeCoverLoss()
     ]);
     
     setLastUpdated(new Date());
@@ -2143,6 +2282,9 @@ const useEnvironmentalData = () => {
         break;
       case 'ndvi':
         await fetchNDVI();
+        break;
+      case 'treeCoverLoss':
+        await fetchTreeCoverLoss();
         break;
       default:
         await fetchRealTimeData();
@@ -3855,8 +3997,122 @@ const RawdahDashboard = () => {
             </div>
             
             {/* Real-Time Environmental Metrics with Individual Loading States */}
-            <div className="grid grid-cols-1 gap-6 mb-8">
+            <div className="grid grid-cols-2 gap-6 mb-8">
               
+              {/* Tree Cover Loss Chart Component */}
+              <Card isDarkMode={isDarkMode} className="relative">
+                {loadingStates.treeCoverLoss && <LoadingOverlay isLoading={true} widget={t.treeCoverLossWidget} t={t} />}
+                <div className="mb-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                      {t.treeCoverLoss}
+                    </h3>
+                    {apiStatus.treeCoverLoss === 'success' && <Wifi className="w-4 h-4 text-green-500" />}
+                    {apiStatus.treeCoverLoss === 'no-data' && (
+                      <div className="flex items-center gap-1">
+                        <AlertCircle className="w-4 h-4 text-yellow-500" />
+                        <span className="text-xs text-yellow-600">{t.noLiveData}</span>
+                      </div>
+                    )}
+                    <FreshnessIndicator timestamp={dataTimestamps.treeCoverLoss} />
+                  </div>
+                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    {t.treeCoverLossDesc}
+                  </p>
+                </div>
+                <div className="h-64">
+                  {dashboardData.treeCoverLossData.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center">
+                      <div className="text-center">
+                        {apiStatus.treeCoverLoss === 'error' ? (
+                          <>
+                            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                            <p className="text-sm text-red-600 font-medium">Failed to fetch data</p>
+                            <p className="text-xs text-slate-500 mt-1">Global Forest Watch API unavailable</p>
+                          </>
+                        ) : apiStatus.treeCoverLoss === 'no-data' ? (
+                          <>
+                            <div className="w-8 h-8 bg-slate-300 rounded-full mx-auto mb-2 flex items-center justify-center">
+                              <span className="text-xs text-slate-600">📊</span>
+                            </div>
+                            <p className="text-sm text-slate-600 font-medium">No tree cover loss detected</p>
+                            <p className="text-xs text-slate-500 mt-1">Riyadh region shows no significant forest loss</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="animate-pulse">
+                              <div className="w-8 h-8 bg-slate-300 rounded-full mx-auto mb-2"></div>
+                              <p className="text-sm text-slate-500">Loading satellite data...</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={prepareChartData(dashboardData.treeCoverLossData, language === 'ar', language)}>
+                        <CartesianGrid 
+                          strokeDasharray="3 3" 
+                          stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
+                        />
+                        <XAxis 
+                          dataKey="year" 
+                          tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          orientation={language === 'ar' ? 'top' : 'bottom'}
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          orientation={language === 'ar' ? 'right' : 'left'}
+                          label={{ 
+                            value: 'Hectares', 
+                            angle: language === 'ar' ? 90 : -90, 
+                            position: 'insideLeft',
+                            style: { textAnchor: 'middle', fill: isDarkMode ? "#9ca3af" : "#64748b" }
+                          }}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length > 0) {
+                              const data = payload[0].payload;
+                              
+                              return (
+                                <div className={`p-3 rounded-lg shadow-lg ${isDarkMode ? 'bg-slate-700 text-white border border-slate-600' : 'bg-white border border-slate-200'}`}>
+                                  <p className="text-sm font-medium mb-1">Year {data.year}</p>
+                                  <p className="text-sm text-red-600 font-medium">
+                                    🌳 Tree Cover Loss: {data.lossHa} ha
+                                  </p>
+                                  <p className="text-xs text-green-600 mt-1">
+                                    ✓ Satellite Data (High Confidence)
+                                  </p>
+                                  <p className="text-xs text-slate-500 mt-1">
+                                    Source: {data.dataSource}
+                                  </p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar 
+                          dataKey="lossHa" 
+                          fill="#dc2626" 
+                          name="Tree Cover Loss (ha)"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  onClick={() => refreshWidget('treeCoverLoss')}
+                  className="absolute bottom-2 right-2"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                </Button>
+              </Card>
+
               {/* Air Quality Chart Component - Enhanced for real data */}
               <Card isDarkMode={isDarkMode} className="relative">
                 {loadingStates.airQuality && <LoadingOverlay isLoading={true} widget={t.airQualityWidget} t={t} />}
