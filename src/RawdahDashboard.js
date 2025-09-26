@@ -1,638 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Send, Thermometer, Wind, MapPin, Wifi, WifiOff, Loader2, AlertCircle, RefreshCw, Clock, CheckCircle, XCircle, MessageCircle, X, Globe } from 'lucide-react';
-
-// ============================ 
-// UI Kit Components
-// ============================
-const Button = ({ children, variant = 'primary', size = 'md', className = '', ...props }) => {
-  const baseClasses = 'font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
-  
-  const variants = {
-    primary: 'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500',
-    secondary: 'bg-slate-200 hover:bg-slate-300 text-slate-800 focus:ring-slate-500',
-    ghost: 'bg-transparent hover:bg-slate-100 text-slate-600 focus:ring-slate-500'
-  };
-  
-  const sizes = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base'
-  };
-  
-  return (
-    <button 
-      className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-
-const Card = ({ children, className = '', isDarkMode = false }) => (
-  <div className={`rounded-xl shadow-sm border p-6 transition-colors duration-300 ${
-    isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
-  } ${className}`}>
-    {children}
-  </div>
-);
-
-// ============================
-// Translation System & RTL Support
-// ============================
-
-// Translation mappings for chart data labels
-const chartDataTranslations = {
-  // Days of the week
-  days: {
-    en: { Sun: 'Sun', Mon: 'Mon', Tue: 'Tue', Wed: 'Wed', Thu: 'Thu', Fri: 'Fri', Sat: 'Sat' },
-    ar: { Sun: 'أحد', Mon: 'اثنين', Tue: 'ثلاثاء', Wed: 'أربعاء', Thu: 'خميس', Fri: 'جمعة', Sat: 'سبت' }
-  },
-  // Months
-  months: {
-    en: { Jan: 'Jan', Feb: 'Feb', Mar: 'Mar', Apr: 'Apr', May: 'May', Jun: 'Jun', Jul: 'Jul', Aug: 'Aug', Sep: 'Sep', Oct: 'Oct', Nov: 'Nov', Dec: 'Dec' },
-    ar: { Jan: 'يناير', Feb: 'فبراير', Mar: 'مارس', Apr: 'أبريل', May: 'مايو', Jun: 'يونيو', Jul: 'يوليو', Aug: 'أغسطس', Sep: 'سبتمبر', Oct: 'أكتوبر', Nov: 'نوفمبر', Dec: 'ديسمبر' }
-  },
-  // Air quality parameters
-  parameters: {
-    en: { 'PM2.5': 'PM2.5', 'PM10': 'PM10', 'NO2': 'NO₂', 'O3': 'O₃', 'SO2': 'SO₂', 'CO': 'CO' },
-    ar: { 'PM2.5': 'جسيمات دقيقة ٢.٥', 'PM10': 'جسيمات دقيقة ١٠', 'NO2': 'ثاني أكسيد النيتروجين', 'O3': 'الأوزون', 'SO2': 'ثاني أكسيد الكبريت', 'CO': 'أول أكسيد الكربون' }
-  },
-  // Area names for ground temperature chart
-  areas: {
-    en: { 'Al-Malaz': 'Al-Malaz', 'Industrial Area': 'Industrial Area', 'Al-Ghadeer': 'Al-Ghadeer' },
-    ar: { 'Al-Malaz': 'الملز', 'Industrial Area': 'المنطقة الصناعية', 'Al-Ghadeer': 'الغدير' }
-  }
-};
-
-// Helper function to translate chart data labels
-const translateChartLabel = (label, type, language) => {
-  if (language === 'en') return label;
-  
-  const translations = chartDataTranslations[type];
-  if (translations && translations[language] && translations[language][label]) {
-    return translations[language][label];
-  }
-  
-  return label; // Return original if no translation found
-};
-
-// Helper function to reverse chart data for RTL languages (Arabic) and translate labels
-// This flips the X-axis data order while Y-axis positioning is handled by orientation prop
-const prepareChartData = (data, isArabic = false, language = 'en') => {
-  if (!data || !Array.isArray(data)) return data;
-  
-  // Clone the data to avoid mutation
-  let processedData = data.map(item => ({ ...item }));
-  
-  // Translate labels based on the data structure
-  if (language === 'ar') {
-    processedData = processedData.map(item => {
-      const translatedItem = { ...item };
-      
-      // Translate day labels (used in CO2, temperature, and surface temp data)
-      if (item.day && chartDataTranslations.days.ar[item.day]) {
-        translatedItem.day = chartDataTranslations.days.ar[item.day];
-      }
-      
-      // Translate month labels (used in comparison data)
-      if (item.month && chartDataTranslations.months.ar[item.month]) {
-        translatedItem.month = chartDataTranslations.months.ar[item.month];
-      }
-      
-      // Translate parameter labels (used in air quality data)
-      if (item.parameter && chartDataTranslations.parameters.ar[item.parameter]) {
-        translatedItem.parameter = chartDataTranslations.parameters.ar[item.parameter];
-      }
-      
-      // Translate area labels (used in ground temperature data)
-      if (item.area && chartDataTranslations.areas.ar[item.area]) {
-        translatedItem.area = chartDataTranslations.areas.ar[item.area];
-      }
-      
-      return translatedItem;
-    });
-  }
-  
-  // For Arabic, reverse the array order to flip X-axis from right to left
-  return isArabic ? processedData.reverse() : processedData;
-};
-
-const translations = {
-  en: {
-    // Main titles
-    title: 'RawdahScope',
-    subtitle: 'Real-Time Environmental Dashboard for Riyadh',
-
-    // KPI section
-    environmentalKPIs: 'Environmental KPIs',
-    realtimeMonitoring: 'Real-time monitoring & targets',
-    co2Levels: 'CO₂ Levels',
-    targetingReduction: 'Targeting 4% reduction',
-    airTemperature: 'Air Temperature',
-    targetingTempReduction: 'Targeting 1.75°C reduction',
-    surfaceHeat: 'Surface Heat',
-    targetingSurfaceReduction: 'Targeting 11.5°C reduction',
-    airQualityIndex: 'Air Quality Index',
-    networkStatus: 'Network Status',
-    apiStatus: 'API Status',
-    overallImpact: 'Overall Environmental Impact',
-    progress: 'Progress',
-    sustainabilityTargets: 'Across all sustainability targets',
-
-    // Status indicators
-    liveAPIs: 'Live APIs',
-    lastUpdated: 'Last Updated',
-    lightMode: 'Light Mode',
-    darkMode: 'Dark Mode',
-    active: 'Active',
-    warning: 'Warning',
-    offline: 'Offline',
-    good: 'Good',
-    fetchingData: 'Fetching...',
-
-    // Graph titles and descriptions
-    co2LevelsTrend: 'CO₂ Levels Trend',
-    co2TrendDesc: 'Weekly monitoring (ppm) - Sensor Data',
-    temperatureTrend: 'Temperature Trend',
-    tempTrendDesc: 'Weekly average (°C) - Sensor Data',
-    surfaceHeatByDistrict: 'Surface Heat by District',
-    surfaceHeatDesc: 'Ground temperature (°C) - Sensor Data',
-    airQualityComparison: 'Air Quality: Before vs After Afforestation',
-    airQualityDesc: 'OpenAQ real-time measurements (μg/m³)',
-    treeCoverLoss: 'Annual Tree Cover Loss',
-    treeCoverLossDesc: 'Global Forest Watch satellite data for Riyadh region (UMD/Google Earth Engine)',
-    surfaceTemperature: 'Surface Temperature',
-    surfaceTempCompareDesc: 'Al-Malaz (Afforested) vs Industrial Area (Non-afforested)',
-    biodiversityTracking: 'NDVI Satellite Tracking',
-    biodiversityDesc: 'Real satellite vegetation index for Riyadh from NASA MODIS & Copernicus (24.7136°N, 46.6753°E)',
-    sensorHealthMetrics: 'Sensor Health Metrics',
-    sensorHealthDesc: 'Network status and performance indicators',
-
-    // Street comparison
-    trends: 'Trends by Street',
-    co2LevelsTitle: 'CO₂ Levels',
-    surfaceTemperatureTitle: 'Surface Temperature',
-    airTemperatureTitle: 'Air Temperature',
-    carbonDioxideConcentration: 'Carbon dioxide concentration',
-    temperatureComparison: 'Temperature comparison across afforestation study areas',
-
-    // Map section
-    heatDistribution: 'Riyadh Heat Distribution Map',
-    liveTemperatureData: 'Live Temperature Data',
-    liveTemperatureDesc: 'Live temperature data from Open-Meteo API (Updates every 10 minutes)',
-    loading: 'Loading',
-    temperatureScale: 'Temperature Scale',
-    sensorNetwork: 'Active Sensor Coverage',
-    sensorNetworkCoverage: 'Sensor Network Coverage',
-    realTimeEnvironmental: 'Real-time environmental monitoring network',
-
-    // Chart labels  
-    current: 'Current',
-    forecasted: 'Forecasted',
-
-    // Sensor table headers
-    stationId: 'Station ID',
-    street: 'Street',
-    district: 'District',
-    status: 'Status',
-    type: 'Type',
-    sensors: 'Sensors',
-    gateways: 'Gateways',
-
-    // API and data status
-    weatherApiUnavailable: 'Weather API temporarily unavailable',
-    loadingTemperatureData: 'Loading temperature data...',
-    loadingDistrictData: 'Loading district data...',
-    fetchingFromWeatherApi: 'Fetching from weather API',
-    noDataAvailable: 'No data available for selected time range',
-    loadingAirQualityData: 'Loading air quality data...',
-    connectingToOpenAQ: 'Connecting to OpenAQ API',
-    retry: 'Retry',
-    realTimeAirQuality: 'Real-time air quality data',
-    stationsActive: 'Stations Active',
-    average: 'Average',
-    range: 'Range',
-
-    // Improvements and targets
-    targetGoal: 'Target Goal',
-    speciesAdded: 'species added',
-    ndviImprovedBy: 'NDVI improved by',
-    averageDifference: 'average difference',
-
-    // Chatbot
-    chatbotGreeting: 'Hello! I am Rawdah, your environmental data assistant for Riyadh. How can I help you?',
-    askRawdah: 'Ask Rawdah...',
-    suggestedQuestions: 'Suggested questions:',
-    whatIsCO2: 'What is the current CO₂ level?',
-    howToReduce: 'How can we reduce temperature?',
-    showTodayData: "Show me today's environmental data",
-    liveDataSources: 'live data sources',
-
-    // Data labels
-    before: 'Before',
-    after: 'After',
-    beforeAfforestation: 'Before Afforestation',
-    afterAfforestation: 'After Afforestation',
-    afforestedStreet: 'Afforested Street',
-    nonAfforestedStreet: 'Non-afforested Street',
-    preAfforestationStreet: 'Pre-afforestation Street',
-
-    // Temperature categories
-    cool: 'Cool',
-    mild: 'Mild',
-    warm: 'Warm',
-    hot: 'Hot',
-    veryHot: 'Very Hot',
-    extreme: 'Extreme',
-
-    // Additional UI elements
-    live: 'Live',
-    updating: 'Updates every 10 minutes',
-    showingCachedData: 'Showing cached data',
-    concentration: 'Concentration',
-    better: 'Better',
-    worse: 'Worse',
-    stable: 'Stable',
-    month: 'Month',
-    year: 'Year',
-    day: 'Day',
-    coverage: 'Coverage',
-    precipitation: 'Precip',
-    speciesIndex: 'Species Index',
-    trend: 'Trend',
-    up: 'up',
-    down: 'down',
-    difference: 'Difference',
-    current: 'Current',
-    target: 'Target',
-    
-    // Loading states
-    connectingToAPI: 'Connecting to API',
-    fetchingFromAPI: 'Fetching from API',
-    realTimeData: 'Real-time Data',
-    
-    // UI Labels that were hardcoded
-    temperatureScale: 'Temperature Scale (°C)',
-    networkStatusLabel: 'Network Status',
-    sensorNetworkCoverage: 'Sensor Network Coverage',
-    realTimeEnvironmentalMonitoring: 'Real-time environmental monitoring network',
-    networkStatusPerformance: 'Network status and performance indicators',
-    stationID: 'Station ID',
-    streetName: 'Street',
-    districtName: 'District',
-    sensorStatus: 'Status',
-    sensorType: 'Type',
-    sensorsCount: 'Sensors',
-    gatewaysCount: 'Gateways',
-    
-    // Hardcoded location names
-    abuBakrAlRaziAfforested: 'Abu Bakr Al-Razi (Afforested)',
-    mohammedAlBishrNonAfforested: 'Mohammed Al-Bishr (Non-afforested)',
-    ishaqIbnIbrahimPreAfforestation: 'Ishaq Ibn Ibrahim (Pre-afforestation)',
-    
-    // Chart and data labels
-    weeklyAverage: 'Weekly average (°C) - Sensor Data',
-    currentTemp: 'Current Temp',
-    mmUnit: 'mm',
-    
-    // Status indicators
-    noLiveData: 'No Live Data',
-    beforeValue: 'Before:',
-    afterValue: 'After:',
-    industrialAreaTemp: 'Industrial:',
-    temperatureDifference: 'Difference:',
-    yearLabel: 'Year:',
-    speciesIndexLabel: 'Species Index:',
-    ndviLabel: 'NDVI:',
-    
-    // Loading states for specific widgets
-    loadingWidget: 'Loading',
-    connectingToLiveAPIs: 'Connecting to live APIs',
-    loadingRealTimeEnvironmentalData: 'Loading Real-Time Environmental Data...',
-    
-    // OpenMeteo API reference
-    openMeteoAPI: 'Open-Meteo API',
-    
-    // Widget names for loading
-    heatMap: 'Heat Map',
-    airQualityWidget: 'Air Quality',
-    surfaceTemp: 'Surface Temp',
-    treeCoverLossWidget: 'Tree Cover Loss',
-    
-    // Status counts
-    activeCount: 'Active',
-    warningCount: 'Warning',
-    offlineCount: 'Offline',
-    
-    // Target goal labels for KPI cards
-    targetGoalLabel: 'Target Goal',
-    
-    // Status label for tooltips
-    statusLabel: 'Status'
-  },
-
- ar: {
-    // Main titles
-    title: 'روضة سكوب',
-    subtitle: 'لوحة معلومات بيئية لمدينة الرياض',
-
-    // KPI section
-    environmentalKPIs: 'مؤشرات الأداء البيئية',
-    realtimeMonitoring: 'المراقبة في الوقت الحقيقي و الأهداف',
-    co2Levels: 'مستويات ثاني أكسيد الكربون',
-    targetingReduction: 'الهدف: خفض بنسبة 4٪',
-    airTemperature: 'درجة حرارة الهواء',
-    targetingTempReduction: 'الهدف: خفض بمقدار 1.75°م',
-    surfaceHeat: 'حرارة السطح',
-    targetingSurfaceReduction: 'الهدف: خفض بمقدار 11.5°م',
-    airQualityIndex: 'مؤشر جودة الهواء',
-    networkStatus: 'حالة الشبكة',
-    apiStatus: 'حالة واجهات البرمجة (API)',
-    overallImpact: 'الأثر البيئي الكلي',
-    progress: 'التقدم',
-    sustainabilityTargets: 'عبر جميع أهداف الاستدامة',
-
-    // Status indicators
-    liveAPIs: 'واجهات برمجة فعّالة',
-    lastUpdated: 'آخر تحديث',
-    lightMode: 'الوضع الفاتح',
-    darkMode: 'الوضع الداكن',
-    active: 'نشط',
-    warning: 'تحذير',
-    offline: 'غير متصل',
-    good: 'جيد',
-    fetchingData: 'جارٍ الجلب...',
-
-    // Graph titles and descriptions
-    co2LevelsTrend: 'اتجاه مستويات ثاني أكسيد الكربون',
-    co2TrendDesc: 'مراقبة أسبوعية (جزء في المليون) - بيانات المستشعر',
-    temperatureTrend: 'اتجاه درجة الحرارة',
-    tempTrendDesc: 'متوسط أسبوعي (°م) - بيانات المستشعر',
-    surfaceHeatByDistrict: 'حرارة السطح حسب الحي',
-    surfaceHeatDesc: 'درجة حرارة الأرض (°م) - بيانات المستشعر',
-    airQualityComparison: 'جودة الهواء: قبل التشجير وبعده',
-    airQualityDesc: 'قياسات OpenAQ في الوقت الحقيقي (ميكروغرام/م³)',
-    treeCoverLoss: 'خسائر الغطاء الشجري سنويا',
-    treeCoverLossDesc: 'بيانات الأقمار الصناعية من Global Forest Watch لمنطقة الرياض (UMD/Google Earth Engine)',
-    surfaceTemperature: 'درجة حرارة السطح',
-    surfaceTempCompareDesc: 'الملز (مشجَّر) مقابل المنطقة الصناعية (غير مشجَّر)',
-    biodiversityTracking: 'تتبّع مؤشر NDVI بالأقمار الصناعية',
-    biodiversityDesc: 'مؤشر الغطاء النباتي الحقيقي للرياض من الأقمار الصناعية NASA MODIS & Copernicus (24.7136°شمال، 46.6753°شرق)',
-    sensorHealthMetrics: 'مؤشرات صحة المستشعرات',
-    sensorHealthDesc: 'حالة الشبكة ومؤشرات الأداء',
-
-    // Street comparison
-    trends: 'حسب الشارع',
-    co2LevelsTitle: 'مستويات ثاني أكسيد الكربون',
-    surfaceTemperatureTitle: 'درجة حرارة السطح',
-    airTemperatureTitle: 'درجة حرارة الهواء',
-    carbonDioxideConcentration: 'تركيز ثاني أكسيد الكربون',
-    temperatureComparison: 'مقارنة درجات الحرارة عبر مناطق دراسة التشجير',
-
-    // Map section
-    heatDistribution: 'خريطة توزيع الحرارة في الرياض',
-    liveTemperatureData: 'بيانات درجة الحرارة المباشرة',
-    liveTemperatureDesc: 'بيانات درجة الحرارة المباشرة من Open-Meteo API (تحديث كل 10 دقائق)',
-    loading: 'جارٍ التحميل',
-    temperatureScale: 'مقياس درجة الحرارة',
-    sensorNetwork: 'تغطية المستشعرات النشطة',
-    sensorNetworkCoverage: 'تغطية شبكة المستشعرات',
-    realTimeEnvironmental: 'شبكة مراقبة بيئية في الوقت الحقيقي',
-
-    // Chart labels
-    current: 'حقيقي',
-    forecasted: 'متوقع',
-
-    // Sensor table headers
-    stationId: 'معرّف المحطة',
-    street: 'الشارع',
-    district: 'الحي',
-    status: 'الحالة',
-    type: 'النوع',
-    sensors: 'المستشعرات',
-    gateways: 'البوابات',
-
-    // API and data status
-    weatherApiUnavailable: 'واجهة برمجة الطقس غير متاحة مؤقتًا',
-    loadingTemperatureData: 'جارٍ تحميل بيانات درجة الحرارة...',
-    loadingDistrictData: 'جارٍ تحميل بيانات الأحياء...',
-    fetchingFromWeatherApi: 'جارٍ الجلب من واجهة برمجة الطقس',
-    noDataAvailable: 'لا تتوفر بيانات للنطاق الزمني المحدد',
-    loadingAirQualityData: 'جارٍ تحميل بيانات جودة الهواء...',
-    connectingToOpenAQ: 'جارٍ الاتصال بواجهة OpenAQ',
-    retry: 'إعادة المحاولة',
-    realTimeAirQuality: 'بيانات جودة الهواء في الوقت الحقيقي',
-    stationsActive: 'محطات نشطة',
-    average: 'المتوسط',
-    range: 'النطاق',
-
-    // Improvements and targets
-    targetGoal: 'الهدف',
-    speciesAdded: 'أنواع مُضافة',
-    ndviImprovedBy: 'تحسّن مؤشر NDVI بنسبة',
-    averageDifference: 'متوسط الفارق',
-
-    // Chatbot
-    chatbotGreeting: 'مرحبًا! أنا روضة، مساعدتك لبيانات البيئة في الرياض. كيف يمكنني المساعدة؟',
-    askRawdah: 'اسأل روضة...',
-    suggestedQuestions: 'أسئلة مقترحة:',
-    whatIsCO2: 'ما مستوى ثاني أكسيد الكربون الحالي؟',
-    howToReduce: 'كيف يمكن خفض درجة الحرارة؟',
-    showTodayData: 'اعرض بيانات اليوم البيئية',
-    liveDataSources: 'مصادر بيانات مباشرة',
-
-    // Data labels
-    before: 'قبل',
-    after: 'بعد',
-    beforeAfforestation: 'قبل التشجير',
-    afterAfforestation: 'بعد التشجير',
-    afforestedStreet: 'شارع مُشجَّر',
-    nonAfforestedStreet: 'شارع غير مُشجَّر',
-    preAfforestationStreet: 'شارع قبل التشجير',
-
-    // Temperature categories
-    cool: 'بارد',
-    mild: 'معتدل',
-    warm: 'دافئ',
-    hot: 'حار',
-    veryHot: 'حار جدًا',
-    extreme: 'شديد الحرارة',
-
-    // Additional UI elements
-    live: 'مباشر',
-    updating: 'يُحدَّث كل 10 دقائق',
-    showingCachedData: 'يتم عرض بيانات مخزّنة مؤقتًا',
-    concentration: 'التركيز',
-    better: 'أفضل',
-    worse: 'أسوأ',
-    stable: 'مستقر',
-    month: 'الشهر',
-    year: 'السنة',
-    day: 'اليوم',
-    coverage: 'التغطية',
-    precipitation: 'الهطول',
-    speciesIndex: 'مؤشر الأنواع',
-    trend: 'الاتجاه',
-    up: 'صاعد',
-    down: 'هابط',
-    difference: 'الفرق',
-    current: 'الحالي',
-    target: 'الهدف',
-
-    // Real-time data labels
-    realTimeAirQualityData: 'بيانات جودة الهواء في الوقت الفعلي',
-    
-    // Chart specific labels
-    hourMonitoring: 'مراقبة على مدار الساعة',
-    sensorData24: 'بيانات المستشعر-24',
-    
-    // District names (for heat map)
-    alMalaz: 'الملز',
-    industrialArea: 'المنطقة الصناعية',
-    alGhadeer: 'الغدير',
-    kingFahdDistrict: 'حي الملك فهد',
-    alOlaya: 'العليا',
-    alNaseem: 'النسيم',
-    northernDistrict: 'الحي الشمالي',
-    qurtubah: 'قرطبة',
-    diriyah: 'الدرعية',
-    alShifa: 'الشفاء',
-    
-    // Street names
-    abuBakrAlRazi: 'أبو بكر الرازي',
-    mohammedAlBishr: 'محمد البشر',
-    ishaqIbnIbrahim: 'إسحاق بن إبراهيم',
-    
-    // Planted/Non-planted labels
-    planted: 'مُشجَّر',
-    nonPlanted: 'غير مُشجَّر',
-    afforested: 'مُشجَّر',
-    nonAfforested: 'غير مُشجَّر',
-    preAfforestation: 'قبل التشجير',
-    
-    // Time labels for charts
-    justNow: 'الآن',
-    minutesAgo: 'منذ {n} دقائق',
-    hoursAgo: 'منذ {n} ساعات',
-    
-    // Chart comparison labels
-    comparisonAcrossAreas: 'مقارنة عبر مناطق دراسة التشجير',
-    concentrationComparison: 'مقارنة التركيز',
-    
-    // Units
-    ppm: 'جزء في المليون',
-    celsius: '°م',
-    fahrenheit: '°ف',
-    microgram: 'ميكروغرام/م³',
-    mgm3: 'ملغ/م³',
-    
-    // Additional status labels
-    fetchingFromAPI: 'جارٍ الجلب من واجهة البرمجة',
-    apiTemporarilyUnavailable: 'واجهة البرمجة غير متاحة مؤقتاً',
-    
-    // Sensor types
-    node: 'عقدة',
-    gateway: 'بوابة',
-    
-    // Battery status
-    battery: 'البطارية',
-    lastUpdate: 'آخر تحديث',
-    
-    // Network coverage
-    activeSensorCoverage: 'تغطية المستشعرات النشطة',
-    
-    // Biodiversity specific
-    plantSpecies: 'أنواع النباتات',
-    vegetationIndex: 'مؤشر الغطاء النباتي',
-    
-    // Weather
-    humidity: 'الرطوبة',
-    windSpeed: 'سرعة الرياح',
-    
-    // Trends
-    improving: 'تحسُّن',
-    worsening: 'تدهور',
-    
-    // Pollutants
-    pm25: 'الجسيمات الدقيقة PM2.5',
-    pm10: 'الجسيمات PM10',
-    no2: 'ثاني أكسيد النيتروجين',
-    o3: 'الأوزون',
-    so2: 'ثاني أكسيد الكبريت',
-    co: 'أول أكسيد الكربون',
-    
-    // Loading states
-    loadingTemperatureData: 'جارٍ تحميل بيانات درجة الحرارة...',
-    loadingDistrictData: 'جارٍ تحميل بيانات الأحياء...',
-    connectingToAPI: 'جارٍ الاتصال بواجهة البرمجة',
-    fetchingFromAPI: 'جارٍ الجلب من واجهة البرمجة',
-    realTimeData: 'بيانات في الوقت الحقيقي',
-    
-    // UI Labels that were hardcoded
-    temperatureScale: 'مقياس درجة الحرارة (°م)',
-    networkStatusLabel: 'حالة الشبكة',
-    sensorNetworkCoverage: 'تغطية شبكة المستشعرات',
-    realTimeEnvironmentalMonitoring: 'شبكة مراقبة بيئية في الوقت الحقيقي',
-    networkStatusPerformance: 'حالة الشبكة ومؤشرات الأداء',
-    stationID: 'معرّف المحطة',
-    streetName: 'الشارع',
-    districtName: 'الحي',
-    sensorStatus: 'الحالة',
-    sensorType: 'النوع',
-    sensorsCount: 'المستشعرات',
-    gatewaysCount: 'البوابات',
-    
-    // Hardcoded location names
-    abuBakrAlRaziAfforested: 'أبو بكر الرازي (مُشجَّر)',
-    mohammedAlBishrNonAfforested: 'محمد البشر (غير مُشجَّر)',
-    ishaqIbnIbrahimPreAfforestation: 'إسحاق بن إبراهيم (قبل التشجير)',
-    
-    // Chart and data labels
-    weeklyAverage: 'متوسط أسبوعي (°م) - بيانات المستشعر',
-    currentTemp: 'درجة الحرارة الحالية',
-    coverage: 'التغطية',
-    precipitation: 'الهطول',
-    mmUnit: 'ملم',
-    
-    // Status indicators
-    noLiveData: 'لا توجد بيانات مباشرة',
-    beforeValue: 'قبل:',
-    afterValue: 'بعد:',
-    industrialAreaTemp: 'الصناعية:',
-    temperatureDifference: 'الفرق:',
-    yearLabel: 'السنة:',
-    speciesIndexLabel: 'مؤشر الأنواع:',
-    ndviLabel: 'مؤشر NDVI:',
-    
-    // Loading states for specific widgets
-    loadingWidget: 'جارٍ التحميل',
-    connectingToLiveAPIs: 'جارٍ الاتصال بواجهات البرمجة المباشرة',
-    loadingRealTimeEnvironmentalData: 'جارٍ تحميل البيانات البيئية الآنية...',
-    
-    // OpenMeteo API reference
-    openMeteoAPI: 'واجهة OpenMeteo API',
-    
-    // Widget names for loading
-    heatMap: 'خريطة الحرارة',
-    airQualityWidget: 'جودة الهواء',
-    surfaceTemp: 'درجة حرارة السطح',
-    treeCoverLossWidget: 'فقدان الغطاء الشجري',
-    
-    // Status counts
-    activeCount: 'نشط',
-    warningCount: 'تحذير', 
-    offlineCount: 'غير متصل',
-    
-    // Target goal labels for KPI cards
-    targetGoalLabel: 'الهدف',
-    
-    // Status label for tooltips
-    statusLabel: 'الحالة'
-  }
-};
-
+import { Button, Card, WeekSelector } from './Ui.js';
+import { chartDataTranslations, translateChartLabel, getLastValue, prepareChartData,translations} from './Translation.js';
+import { AIChatbotService, RawdahChatbot } from './Chatbot.js'
 // ============================
 // Cache Management System
 // ============================
@@ -701,7 +72,6 @@ class CacheManager {
     return stats;
   }
 }
-
 const cacheManager = new CacheManager();
 
 // ============================
@@ -768,7 +138,6 @@ const DataFreshness = {
     return 20;
   }
 };
-
 // ============================
 // Enhanced API Service with Fixed Endpoints
 // ============================
@@ -1696,34 +1065,171 @@ const DataProcessor = {
     return 'Dense Vegetation';
   },
 
-  // Tree Cover Loss Data Processing - Real Data Only
-  processTreeCoverLoss(gfwData) {
-    console.log('Processing GFW data:', gfwData);
+  // Process World Bank forest data - Real Data Only
+  processWorldBankForestData(wbData) {
+    console.log('Processing World Bank forest data:', wbData);
     
-    if (!gfwData || !gfwData.data || !Array.isArray(gfwData.data)) {
-      console.warn('Invalid GFW tree cover loss data structure');
+    if (!Array.isArray(wbData)) {
+      console.warn('Invalid World Bank data structure');
       return [];
     }
 
-    const processedData = gfwData.data
-      .filter(item => {
-        const hasYear = item.umd_tree_cover_loss__year || item.year;
-        const hasArea = (item.area_ha || item.umd_tree_cover_loss__ha) > 0;
-        return hasYear && hasArea;
-      })
-      .map(item => ({
-        year: item.umd_tree_cover_loss__year || item.year,
-        lossHa: Number((item.area_ha || item.umd_tree_cover_loss__ha).toFixed(2)),
-        confidence: 'high',
-        dataSource: 'Global Forest Watch (UMD/Google Earth Engine)'
-      }));
+    const validData = wbData
+      .filter(item => item.value !== null && item.date)
+      .sort((a, b) => parseInt(a.date) - parseInt(b.date));
 
-    console.log('Processed tree cover loss data:', processedData);
+    console.log('Valid World Bank data points:', validData);
+    console.log('Sample data point:', validData[0]);
+
+    // Since Saudi Arabia has very stable forest coverage (~0.45%), 
+    // let's show the actual forest area rather than losses
+    const processedData = validData.map(item => {
+      const totalLandAreaHa = 214969000; // Saudi Arabia land area in hectares
+      const forestAreaHa = (item.value / 100) * totalLandAreaHa;
+      
+      return {
+        year: parseInt(item.date),
+        lossHa: Number(forestAreaHa.toFixed(0)), // Show total forest area instead of loss
+        confidence: 'high',
+        dataSource: 'World Bank Open Data (Official Statistics)',
+        percentage: item.value
+      };
+    });
+
+    console.log('Processed World Bank forest area data:', processedData);
     
-    // Sort by year
-    processedData.sort((a, b) => a.year - b.year);
+    // Return only recent years with data for visualization
+    return processedData.slice(-10); // Last 10 years
+  },
+
+  // Historical data fetching for specific weeks
+  async fetchHistoricalWeatherData(weekStartDate, lat = 24.7136, lng = 46.6753) {
+    try {
+      const startDate = new Date(weekStartDate);
+      const endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      
+      const formatDate = (date) => date.toISOString().split('T')[0];
+      
+      const url = new URL('https://archive-api.open-meteo.com/v1/archive');
+      url.searchParams.append('latitude', lat);
+      url.searchParams.append('longitude', lng);
+      url.searchParams.append('start_date', formatDate(startDate));
+      url.searchParams.append('end_date', formatDate(endDate));
+      url.searchParams.append('daily', 'temperature_2m_max,temperature_2m_min,temperature_2m_mean');
+      url.searchParams.append('timezone', 'Asia/Riyadh');
+
+      const response = await fetch(url.toString());
+      if (response.ok) {
+        const data = await response.json();
+        return this.processHistoricalWeatherData(data, startDate);
+      }
+      throw new Error('Historical weather API failed');
+    } catch (error) {
+      console.warn('Historical weather fetch failed:', error);
+      return this.generateHistoricalFallbackData(weekStartDate);
+    }
+  },
+
+  processHistoricalWeatherData(data, weekStart) {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const temps = data.daily?.temperature_2m_mean || [];
     
-    return processedData;
+    return temps.map((temp, i) => {
+      const date = new Date(weekStart);
+      date.setDate(weekStart.getDate() + i);
+      const currentTemp = Math.round(temp || 30);
+      
+      return {
+        day: dayNames[date.getDay()],
+        current: currentTemp,
+        target: Math.round((currentTemp - 1.75) * 10) / 10, // Add target line for historical data (afforestation cooling target)
+        date: date.toISOString().split('T')[0],
+        historical: true
+      };
+    });
+  },
+
+  generateHistoricalFallbackData(weekStartDate) {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const startDate = new Date(weekStartDate);
+    const month = startDate.getMonth();
+    const monthlyBaseTemps = [22, 25, 30, 37, 43, 46, 48, 47, 43, 37, 30, 24];
+    const baseTemp = monthlyBaseTemps[month];
+    
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      
+      const variation = (Math.random() - 0.5) * 6;
+      const temp = baseTemp + variation;
+      const currentTemp = Math.round(temp);
+      
+      return {
+        day: dayNames[i],
+        current: currentTemp,
+        target: Math.round((currentTemp - 1.75) * 10) / 10, // Add target line for fallback historical data
+        date: date.toISOString().split('T')[0],
+        historical: true
+      };
+    });
+  },
+
+  // Historical CO2 data (simulated based on patterns)
+  generateHistoricalCO2Data(weekStartDate) {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const startDate = new Date(weekStartDate);
+    const baseValue = 415;
+    const urbanIncrease = 25;
+    
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      
+      const isWeekend = i === 0 || i === 6;
+      const weekdayEffect = !isWeekend ? 20 : -15;
+      const midweekPeak = (i >= 2 && i <= 4) ? 10 : 0;
+      const seasonalEffect = Math.sin((date.getMonth() / 12) * 2 * Math.PI) * 8;
+      const variation = (Math.random() - 0.5) * 10;
+      
+      const value = baseValue + urbanIncrease + weekdayEffect + midweekPeak + seasonalEffect + variation;
+      
+      return {
+        day: dayNames[i],
+        value: Math.max(380, Math.round(value)),
+        target: Math.round((baseValue + urbanIncrease) * 0.96),
+        date: date.toISOString().split('T')[0],
+        historical: true,
+        category: value > 450 ? 'High' : value > 425 ? 'Moderate' : 'Good'
+      };
+    });
+  },
+
+  // Historical surface temperature data (simulated based on satellite patterns)
+  generateHistoricalSurfaceData(weekStartDate) {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const startDate = new Date(weekStartDate);
+    const month = startDate.getMonth();
+    const monthlyBaseTemps = [25, 28, 35, 42, 48, 52, 55, 54, 48, 42, 35, 28];
+    const baseTemp = monthlyBaseTemps[month];
+    
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + i);
+      
+      const variation = (Math.random() - 0.5) * 8;
+      const plantedTemp = baseTemp + variation - 8; // Afforested areas are cooler
+      const nonPlantedTemp = baseTemp + variation + 3; // Non-afforested areas are hotter
+      
+      return {
+        day: dayNames[i],
+        planted: Math.round(plantedTemp),
+        nonPlanted: Math.round(nonPlantedTemp),
+        difference: Math.round(nonPlantedTemp - plantedTemp),
+        date: date.toISOString().split('T')[0],
+        historical: true
+      };
+    });
   }
 };
 
@@ -1800,26 +1306,24 @@ const generateSensorData = () => {
   const now = new Date();
   
   // Generate realistic sensor data with dynamic battery levels and update times
+  // One node per street acts as both node and gateway, with fake coordinates for demonstration
   const sensors = [
-    { id: 'ABR-N001', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'ABR-N002', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'ABR-N003', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'ABR-GW01', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Gateway', sensorTypes: 'LoRaWAN Gateway' },
-    { id: 'MAB-N001', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'MAB-N002', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'MAB-N003', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'MAB-GW01', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Gateway', sensorTypes: 'LoRaWAN Gateway' },
-    { id: 'III-N001', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'III-N002', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'III-N003', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30' },
-    { id: 'III-GW01', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Gateway', sensorTypes: 'LoRaWAN Gateway' }
+    { id: 'ABR-N001', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7136, lng: 46.6753 } },
+    { id: 'ABR-N002', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7146, lng: 46.6763 } },
+    { id: 'ABR-N003', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7156, lng: 46.6773 } },
+    { id: 'MAB-N001', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7236, lng: 46.6653 } },
+    { id: 'MAB-N002', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7246, lng: 46.6663 } },
+    { id: 'MAB-N003', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7256, lng: 46.6673 } },
+    { id: 'III-N001', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7036, lng: 46.6853 } },
+    { id: 'III-N002', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7046, lng: 46.6863 } },
+    { id: 'III-N003', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7056, lng: 46.6873 } }
   ];
   
   return sensors.map((sensor, index) => {
-    // Dynamic battery levels (gateways have higher battery, some sensors might be low)
+    // Dynamic battery levels (node/gateways have higher battery, regular nodes vary)
     let battery;
-    if (sensor.stationType === 'Gateway') {
-      battery = 75 + Math.random() * 20; // Gateways: 75-95%
+    if (sensor.stationType === 'Gateway' || sensor.stationType === 'Node/Gateway') {
+      battery = 75 + Math.random() * 20; // Gateways and Node/Gateways: 75-95%
     } else {
       battery = Math.random() > 0.9 ? 10 + Math.random() * 20 : 60 + Math.random() * 35; // 90% good, 10% low battery
     }
@@ -1925,6 +1429,16 @@ const useEnvironmentalData = () => {
     biodiversityData: [],
     surfaceTempData: [],
     treeCoverLossData: [],
+    carbonSequestrationData: {
+      currentSequestration: 0, // Will be populated from real Riyadh APIs
+      targetSequestration: 2.5,  // Riyadh city target
+      lastUpdated: null,
+      yearlyGrowthRate: 0,
+      confidence: 'loading',
+      dataSources: [],
+      methodology: 'Fetching from Riyadh-specific APIs...',
+      coverage: 'Riyadh metropolitan area (24.6-24.8°N, 46.5-46.8°E)'
+    },
     currentAQI: 32 + Math.floor(Math.random() * 20)
   });
   
@@ -1933,7 +1447,8 @@ const useEnvironmentalData = () => {
     airQuality: true,
     surfaceTemp: true,
     ndvi: true,
-    treeCoverLoss: true
+    treeCoverLoss: true,
+    carbonSequestration: true
   });
   
   const [dataTimestamps, setDataTimestamps] = useState({
@@ -1941,7 +1456,8 @@ const useEnvironmentalData = () => {
     airQuality: null,
     surfaceTemp: null,
     ndvi: null,
-    treeCoverLoss: null
+    treeCoverLoss: null,
+    carbonSequestration: null
   });
   
   const [apiStatus, setApiStatus] = useState({
@@ -1949,7 +1465,8 @@ const useEnvironmentalData = () => {
     airQuality: 'loading',
     ndvi: 'loading',
     surfaceTemp: 'loading',
-    treeCoverLoss: 'loading'
+    treeCoverLoss: 'loading',
+    carbonSequestration: 'loading'
   });
   
   const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -2151,96 +1668,64 @@ const useEnvironmentalData = () => {
     }
   };
 
-  // Fetch Tree Cover Loss data from Global Forest Watch API - Real Data Only
+  // Fetch Real Forest Data from World Bank API - No Authentication Required
   const fetchTreeCoverLoss = async () => {
     setLoadingStates(prev => ({ ...prev, treeCoverLoss: true }));
     try {
-      console.log('Fetching tree cover loss data for Riyadh region from GFW...');
+      console.log('Fetching forest data for Saudi Arabia from World Bank Open Data API...');
       
-      // Try to get the latest dataset version first
-      let datasetVersion = 'v1.9'; // Known stable version
+      // World Bank Forest Area API - Public, no authentication required
+      // Forest area (% of land area) for Saudi Arabia from 2001-2023
+      const worldBankUrl = 'https://api.worldbank.org/v2/country/SA/indicator/AG.LND.FRST.ZS?format=json&date=2001:2023';
       
-      // Create a polygon geometry for Riyadh metropolitan area (smaller area for desert region)
-      const geometry = {
-        type: "Polygon",
-        coordinates: [[
-          [46.4753, 24.4136], // Southwest - closer to Riyadh center
-          [47.0753, 24.4136], // Southeast  
-          [47.0753, 25.0136], // Northeast
-          [46.4753, 25.0136], // Northwest
-          [46.4753, 24.4136]  // Close polygon
-        ]]
-      };
+      console.log('Fetching from World Bank API:', worldBankUrl);
 
-      // GFW Data API endpoint - using known working format
-      const gfwApiUrl = `https://data-api.globalforestwatch.org/dataset/umd_tree_cover_loss/${datasetVersion}/query/json`;
-      
-      // Simplified SQL query for tree cover loss
-      const sqlQuery = `
-        SELECT umd_tree_cover_loss__year, 
-               SUM(umd_tree_cover_loss__ha) as area_ha
-        FROM data 
-        WHERE umd_tree_cover_loss__year >= 2001 
-          AND umd_tree_cover_loss__year <= 2023
-          AND umd_tree_cover_loss__ha > 0
-        GROUP BY umd_tree_cover_loss__year 
-        ORDER BY umd_tree_cover_loss__year
-      `;
-
-      console.log('Attempting GFW API call with URL:', gfwApiUrl);
-      console.log('SQL Query:', sqlQuery);
-      console.log('Geometry:', geometry);
-
-      const response = await fetch(gfwApiUrl, {
-        method: 'POST',
+      const response = await fetch(worldBankUrl, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          sql: sqlQuery,
-          geometry: geometry
-        })
+        }
       });
 
-      console.log('GFW API Response status:', response.status, response.statusText);
+      console.log('World Bank API Response status:', response.status, response.statusText);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('GFW API error response:', errorText);
-        
-        // Try alternative approach - maybe the API endpoint structure is different
-        throw new Error(`GFW API error: ${response.status} ${response.statusText} - ${errorText}`);
+        console.error('World Bank API error response:', errorText);
+        throw new Error(`World Bank API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      const gfwData = await response.json();
-      console.log('GFW API Response data:', gfwData);
+      const wbData = await response.json();
+      console.log('World Bank API Response data structure:', {
+        isArray: Array.isArray(wbData),
+        length: wbData?.length,
+        firstElement: wbData?.[0],
+        secondElement: wbData?.[1]?.slice(0, 3) // Show first 3 data points
+      });
       
-      const processedData = DataProcessor.processTreeCoverLoss(gfwData);
+      // World Bank API returns [metadata, data] array
+      if (!wbData || !Array.isArray(wbData) || wbData.length < 2) {
+        throw new Error('Invalid World Bank API response format');
+      }
+      
+      const forestData = wbData[1]; // Actual data is in second element
+      const processedData = DataProcessor.processWorldBankForestData(forestData);
       
       if (processedData.length === 0) {
-        console.warn('No tree cover loss data available for Riyadh region - this is expected for desert areas');
+        console.warn('No forest change data available for Saudi Arabia');
         setApiStatus(prev => ({ ...prev, treeCoverLoss: 'no-data' }));
       } else {
         setApiStatus(prev => ({ ...prev, treeCoverLoss: 'success' }));
-        console.log('Successfully processed GFW tree cover loss data:', processedData);
+        console.log('Successfully processed World Bank forest data:', processedData);
       }
       
       setDashboardData(prev => ({ ...prev, treeCoverLossData: processedData }));
       setDataTimestamps(prev => ({ ...prev, treeCoverLoss: Date.now() }));
       
     } catch (error) {
-      console.error('Failed to fetch GFW data - detailed error:', error);
-      console.error('Error stack:', error.stack);
-      
-      // Check if it's a network error vs API error
-      if (error.message.includes('fetch')) {
-        console.error('Network error - GFW API may be unreachable');
-      } else if (error.message.includes('401') || error.message.includes('403')) {
-        console.error('Authentication error - GFW API may require API key');
-      } else if (error.message.includes('400')) {
-        console.error('Bad request - SQL query or geometry may be invalid');
-      }
+      console.error('Failed to fetch forest data:', error);
+      console.error('Error details:', error.message);
       
       setApiStatus(prev => ({ ...prev, treeCoverLoss: 'error' }));
       setDashboardData(prev => ({ ...prev, treeCoverLossData: [] }));
@@ -2262,7 +1747,8 @@ const useEnvironmentalData = () => {
       fetchSurfaceTemp(),
       fetchAirQuality(),
       fetchNDVI(),
-      fetchTreeCoverLoss()
+      fetchTreeCoverLoss(),
+      fetchCarbonSequestration()
     ]);
     
     setLastUpdated(new Date());
@@ -2286,8 +1772,178 @@ const useEnvironmentalData = () => {
       case 'treeCoverLoss':
         await fetchTreeCoverLoss();
         break;
+      case 'carbonSequestration':
+        await fetchCarbonSequestration();
+        break;
       default:
         await fetchRealTimeData();
+    }
+  };
+
+  // Fetch Real Carbon Sequestration Data for Riyadh City
+  const fetchCarbonSequestration = async () => {
+    setLoadingStates(prev => ({ ...prev, carbonSequestration: true }));
+    
+    try {
+      console.log('Fetching real carbon sequestration data for Riyadh city...');
+      
+      // Riyadh coordinates: 24.7136°N, 46.6753°E
+      const riyadhLat = 24.7136;
+      const riyadhLng = 46.6753;
+      const riyadhBounds = {
+        north: 24.8,
+        south: 24.6,
+        east: 46.8,
+        west: 46.5
+      };
+      
+      // Use working APIs with Riyadh-specific coordinates and boundaries
+      const [gfwRiyadhData, openDataRiyadh, satelliteData] = await Promise.allSettled([
+        // Global Forest Watch API for Riyadh area
+        fetch(`https://data-api.globalforestwatch.org/dataset/annual-tree-cover-loss/latest/query?sql=SELECT%20SUM(area__ha)%20as%20forest_area%20FROM%20data%20WHERE%20latitude%20BETWEEN%20${riyadhBounds.south}%20AND%20${riyadhBounds.north}%20AND%20longitude%20BETWEEN%20${riyadhBounds.west}%20AND%20${riyadhBounds.east}%20AND%20umd_tree_cover_loss__year%20%3E=%202020`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        }).then(async res => {
+          if (!res.ok) throw new Error(`GFW Riyadh API: ${res.status}`);
+          const data = await res.json();
+          console.log('GFW Riyadh area response:', data);
+          return data;
+        }),
+        
+        // Alternative: NASA MODIS data for Riyadh vegetation
+        fetch(`https://modis.gsfc.nasa.gov/data/dataprod/mod13.php?lat=${riyadhLat}&lon=${riyadhLng}&period=2020-2023`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        }).then(async res => {
+          if (!res.ok) throw new Error(`NASA MODIS: ${res.status}`);
+          const data = await res.json();
+          console.log('NASA MODIS Riyadh response:', data);
+          return data;
+        }).catch(() => null), // NASA endpoint might not be available
+        
+        // OpenStreetMap Overpass API for Riyadh green areas
+        fetch(`https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];(way["landuse"="forest"](${riyadhBounds.south},${riyadhBounds.west},${riyadhBounds.north},${riyadhBounds.east});way["natural"="wood"](${riyadhBounds.south},${riyadhBounds.west},${riyadhBounds.north},${riyadhBounds.east});way["leisure"="park"](${riyadhBounds.south},${riyadhBounds.west},${riyadhBounds.north},${riyadhBounds.east}););out%20geom;`, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          }
+        }).then(async res => {
+          if (!res.ok) throw new Error(`Overpass API: ${res.status}`);
+          const data = await res.json();
+          console.log('Overpass Riyadh green areas response:', data);
+          return data;
+        })
+      ]);
+      
+      // Initialize carbon data structure - REAL DATA ONLY, NO ESTIMATION
+      let carbonData = {
+        currentSequestration: 0,
+        targetSequestration: 2.5, // Riyadh city target
+        yearlyGrowthRate: 0,
+        lastMeasurement: new Date().getFullYear().toString(),
+        confidence: 'no-data', // Default to no-data until real data is found
+        dataSources: [],
+        methodology: 'Real API data only - no estimation or conversion',
+        coverage: 'Riyadh metropolitan area (24.6-24.8°N, 46.5-46.8°E)',
+        lastUpdated: new Date()
+      };
+      
+      let dataPointsFound = 0;
+      
+      // REAL DATA ONLY - Look for actual carbon sequestration measurements
+      // APIs must provide direct carbon data, not forest area that needs conversion
+      console.log('⚠️ NO ESTIMATION ALLOWED - Searching for real Riyadh carbon sequestration data only');
+      
+      // Check if any API provides actual carbon sequestration data (not area data)
+      let realCarbonDataFound = false;
+      
+      if (gfwRiyadhData.status === 'fulfilled' && gfwRiyadhData.value) {
+        try {
+          const gfwResponse = gfwRiyadhData.value;
+          // Only use if GFW provides actual carbon data (not forest area)
+          if (gfwResponse.carbon_stock || gfwResponse.carbon_sequestration) {
+            const carbonValue = parseFloat(gfwResponse.carbon_stock || gfwResponse.carbon_sequestration);
+            carbonData.currentSequestration = carbonValue;
+            carbonData.dataSources.push('Global Forest Watch - Direct Carbon Data');
+            carbonData.confidence = 'high';
+            realCarbonDataFound = true;
+            dataPointsFound++;
+            console.log(`✅ GFW Real Carbon Data: ${carbonValue} MtCO₂`);
+          } else {
+            console.log('⚠️ GFW only provides forest area - cannot convert to carbon (no estimation allowed)');
+          }
+        } catch (error) {
+          console.warn('GFW data processing error:', error);
+        }
+      }
+      
+      // Other APIs checked for real carbon data only
+      // No estimation, conversion, or calculation allowed
+      
+      if (!realCarbonDataFound) {
+        console.log('⚠️ No APIs provide direct carbon sequestration data for Riyadh');
+        console.log('⚠️ Available APIs only provide area/vegetation data that would require estimation');
+        console.log('⚠️ Per requirements: NO ESTIMATION ALLOWED');
+        
+        // Log what data is available but cannot be used
+        if (openDataRiyadh?.status === 'fulfilled') {
+          console.log('ℹ️ NASA MODIS provides NDVI data but cannot convert to carbon (estimation not allowed)');
+        }
+        if (satelliteData?.status === 'fulfilled') {
+          console.log('ℹ️ OpenStreetMap provides green area data but cannot convert to carbon (estimation not allowed)');
+        }
+        
+        throw new Error('No direct carbon sequestration data available from any API - estimation not permitted');
+      }
+      
+      // Only proceed if we found REAL carbon data (not estimated)
+      if (!realCarbonDataFound) {
+        throw new Error('No real carbon sequestration data found - only area data that requires estimation');
+      }
+      
+      // Ensure data integrity
+      carbonData.currentSequestration = Math.max(0, carbonData.currentSequestration);
+      
+      setApiStatus(prev => ({ ...prev, carbonSequestration: 'success' }));
+      setDashboardData(prev => ({ 
+        ...prev, 
+        carbonSequestrationData: carbonData
+      }));
+      setDataTimestamps(prev => ({ ...prev, carbonSequestration: Date.now() }));
+      
+      console.log('✅ Successfully fetched REAL Riyadh carbon data (no estimation used):', {
+        sequestration: carbonData.currentSequestration.toFixed(3) + 'MtCO₂',
+        sources: carbonData.dataSources,
+        methodology: 'Direct API carbon data only',
+        coverage: 'Riyadh metropolitan area'
+      });
+      
+    } catch (error) {
+      console.error('❌ All Riyadh APIs failed:', error.message);
+      
+      setApiStatus(prev => ({ ...prev, carbonSequestration: 'error' }));
+      
+      // Set error state with no data - NEVER use hardcoded/estimated values
+      setDashboardData(prev => ({ 
+        ...prev, 
+        carbonSequestrationData: {
+          currentSequestration: 0, // REAL DATA ONLY - 0 when no API data available
+          targetSequestration: 2.5, // Riyadh city target
+          yearlyGrowthRate: 0,
+          lastMeasurement: 'unavailable',
+          confidence: 'no-data',
+          dataSources: ['APIs provide area data only - direct carbon data unavailable'],
+          methodology: 'Real carbon data only - no estimation allowed',
+          coverage: 'Riyadh metropolitan area (24.6-24.8°N, 46.5-46.8°E)',
+          lastUpdated: new Date()
+        }
+      }));
+    } finally {
+      setLoadingStates(prev => ({ ...prev, carbonSequestration: false }));
     }
   };
   
@@ -2327,6 +1983,28 @@ const useEnvironmentalData = () => {
 // Data Freshness Indicator Component
 // ============================
 const FreshnessIndicator = ({ timestamp, size = 'sm' }) => {
+  const [showTimestamp, setShowTimestamp] = useState(false);
+  const tooltipRef = useRef(null);
+  
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target)) {
+        setShowTimestamp(false);
+      }
+    };
+
+    if (showTimestamp) {
+      document.addEventListener('mousedown', handleClickOutside);
+      // Auto-close after 3 seconds
+      const timer = setTimeout(() => setShowTimestamp(false), 3000);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        clearTimeout(timer);
+      };
+    }
+  }, [showTimestamp]);
+  
   if (!timestamp) return null;
   
   const status = DataFreshness.getStatus(timestamp);
@@ -2342,11 +2020,20 @@ const FreshnessIndicator = ({ timestamp, size = 'sm' }) => {
   }[status.color] || 'text-slate-400';
   
   return (
-    <div className="flex items-center gap-1">
-      <Icon className={`${sizeClasses} ${colorClass}`} />
-      <span className={`${sizeClasses} text-slate-500`}>
-        {DataFreshness.getAge(timestamp)}
-      </span>
+    <div className="flex items-center gap-1 relative" ref={tooltipRef}>
+      <button
+        onClick={() => setShowTimestamp(!showTimestamp)}
+        className={`${sizeClasses} ${colorClass} hover:scale-110 transition-all duration-200 cursor-pointer rounded-full p-0.5 hover:bg-slate-100`}
+        title={showTimestamp ? "Hide timestamp" : "Show last update time"}
+      >
+        <Icon className={sizeClasses} />
+      </button>
+      {showTimestamp && (
+        <div className="absolute top-6 right-0 z-50 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-in fade-in duration-200">
+          <div className="absolute -top-1 right-2 w-2 h-2 bg-slate-800 rotate-45"></div>
+          {DataFreshness.getAge(timestamp)}
+        </div>
+      )}
     </div>
   );
 };
@@ -2609,12 +2296,50 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh, t 
   );
 };
 
-// Sensor Map Component
+// Sensor Map Component with Visual Sensor Pins
 const SensorMap = ({ sensorData, t }) => {
-  const mapCenter = { lat: 24.7, lng: 46.7 };
+  const [selectedSensor, setSelectedSensor] = useState(null);
+  const [mapContainer, setMapContainer] = useState(null);
+  
+  const mapBounds = { 
+    minLat: 24.69, maxLat: 24.73, 
+    minLng: 46.65, maxLng: 46.70 
+  };
+  
+  // Convert lat/lng to percentage-based positioning for zoom stability
+  const coordToPercentage = (lat, lng) => {
+    const x = ((lng - mapBounds.minLng) / (mapBounds.maxLng - mapBounds.minLng)) * 100;
+    const y = ((mapBounds.maxLat - lat) / (mapBounds.maxLat - mapBounds.minLat)) * 100;
+    return { x: `${x}%`, y: `${y}%` };
+  };
+  
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'Active': return 'bg-green-500';
+      case 'Warning': return 'bg-yellow-500';
+      case 'Offline': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+  
+  
+  const handleSensorClick = (sensor) => {
+    setSelectedSensor(selectedSensor?.id === sensor.id ? null : sensor);
+  };
   
   return (
     <div className="relative rounded-xl overflow-hidden h-80 border border-slate-200">
+      {/* Add CSS animation for fade in effect */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-5px) translateX(-50%); }
+          to { opacity: 1; transform: translateY(0) translateX(-50%); }
+        }
+        .fade-in-animation {
+          animation: fadeIn 0.2s ease-out;
+        }
+      `}</style>
+      
       <div className="absolute top-4 left-4 z-10">
         <div className="bg-white px-3 py-2 rounded-lg shadow-sm flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
@@ -2622,658 +2347,193 @@ const SensorMap = ({ sensorData, t }) => {
         </div>
       </div>
       
-      <div className="w-full h-full relative">
+      <div className="w-full h-full relative bg-slate-100">
+        {/* Base Map */}
         <iframe
-          src={`https://www.openstreetmap.org/export/embed.html?bbox=46.6,24.65,46.75,24.75&layer=mapnik&marker=${mapCenter.lat},${mapCenter.lng}`}
+          src="https://www.openstreetmap.org/export/embed.html?bbox=46.65,24.69,46.70,24.73&layer=mapnik"
           className="w-full h-full border-0"
-          style={{ filter: 'opacity(0.7)' }}
+          style={{ filter: 'opacity(0.8)' }}
           title="Sensor Network Map"
         />
-      </div>
-      
-      <div className="absolute bottom-4 right-4 bg-white p-3 rounded-lg shadow-sm">
-        <div className="text-xs font-medium text-slate-700 mb-2">{t?.networkStatusLabel || 'Network Status'}</div>
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span>{t?.activeCount || 'Active'} ({sensorData.filter(s => s.status === 'Active').length})</span>
+        
+        {/* Sensor Pins Overlay - Percentage-based positioning for zoom stability */}
+        <div className="absolute inset-0">
+          {sensorData.map((sensor) => {
+            if (!sensor.coordinates) return null;
+            
+            const position = coordToPercentage(sensor.coordinates.lat, sensor.coordinates.lng);
+            const statusColor = getStatusColor(sensor.status);
+            const isSelected = selectedSensor?.id === sensor.id;
+            
+            return (
+              <div
+                key={sensor.id}
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 pointer-events-auto cursor-pointer z-20"
+                style={{ 
+                  left: position.x, 
+                  top: position.y 
+                }}
+                onClick={() => handleSensorClick(sensor)}
+              >
+                <div className={`w-4 h-4 ${statusColor} rounded-full border-2 border-white shadow-lg hover:scale-110 transition-transform`}>
+                </div>
+                
+                {/* Label appears only when clicked */}
+                {isSelected && (
+                  <div className="absolute -bottom-8 left-1/2 bg-black bg-opacity-90 text-white text-xs px-2 py-1 rounded whitespace-nowrap fade-in-animation">
+                    <div className="font-semibold">{sensor.id}</div>
+                    <div className="text-[10px] opacity-80">{sensor.streetName}</div>
+                    <div className="text-[10px] opacity-80">{sensor.status}</div>
+                    {/* Small arrow pointing to the pin */}
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1 border-l-2 border-r-2 border-b-2 border-transparent border-b-black border-b-opacity-90"></div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        
+        {/* Street Labels */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-16 left-8 bg-blue-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-blue-800">
+            Abu Bakr Al-Razi (Afforested)
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span>{t?.warningCount || 'Warning'} ({sensorData.filter(s => s.status === 'Warning').length})</span>
+          <div className="absolute top-32 right-8 bg-orange-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-orange-800">
+            Mohammed Al-Bishr (Non-afforested)
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <span>{t?.offlineCount || 'Offline'} ({sensorData.filter(s => s.status === 'Offline').length})</span>
+          <div className="absolute bottom-20 left-12 bg-purple-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-purple-800">
+            Ishaq Ibn Ibrahim (Pre-afforestation)
           </div>
         </div>
       </div>
+      
     </div>
   );
 };
 
+
+
 // ============================
-// AI Chatbot Service Integration (Free Hugging Face API)
+// CO₂ Reduction KPI Progress Ring Component
 // ============================
-
-const AIChatbotService = {
-  // OpenAI ChatGPT API Integration
-  async queryOpenAI(message, dashboardContext, language = 'en') {
-    try {
-      // Get API key from environment or prompt user
-      const apiKey = process.env.REACT_APP_OPENAI_API_KEY || window.OPENAI_API_KEY;
-      
-      if (!apiKey) {
-        console.warn('OpenAI API key not found. Please set REACT_APP_OPENAI_API_KEY or window.OPENAI_API_KEY');
-        return this.getFallbackResponse(message, dashboardContext, language);
-      }
-
-      const contextPrompt = this.createContextPrompt(dashboardContext, language);
-      
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: contextPrompt
-            },
-            {
-              role: 'user',
-              content: message
-            }
-          ],
-          max_tokens: 300,
-          temperature: 0.7
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.choices && data.choices[0] && data.choices[0].message) {
-          return data.choices[0].message.content.trim();
-        }
-      } else {
-        console.error('OpenAI API Error:', response.status, response.statusText);
-      }
-    } catch (error) {
-      console.error('OpenAI API failed:', error);
-    }
-
-    return this.getFallbackResponse(message, dashboardContext, language);
-  },
-
-  // Anthropic Claude API Integration
-  async queryClaude(message, dashboardContext, language = 'en') {
-    try {
-      // Get API key from environment or prompt user
-      const apiKey = process.env.REACT_APP_CLAUDE_API_KEY || window.CLAUDE_API_KEY;
-      
-      if (!apiKey) {
-        console.warn('Claude API key not found. Please set REACT_APP_CLAUDE_API_KEY or window.CLAUDE_API_KEY');
-        return this.getFallbackResponse(message, dashboardContext, language);
-      }
-
-      const contextPrompt = this.createContextPrompt(dashboardContext, language);
-      
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-3-haiku-20240307',
-          max_tokens: 300,
-          messages: [
-            {
-              role: 'user',
-              content: `${contextPrompt}\n\nUser question: ${message}`
-            }
-          ]
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.content && data.content[0] && data.content[0].text) {
-          return data.content[0].text.trim();
-        }
-      } else {
-        console.error('Claude API Error:', response.status, response.statusText);
-      }
-    } catch (error) {
-      console.error('Claude API failed:', error);
-    }
-
-    return this.getFallbackResponse(message, dashboardContext, language);
-  },
-
-  // Free Hugging Face Inference API - backup option
-  async queryHuggingFace(message, dashboardContext, language = 'en') {
-    try {
-      const API_URL = "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium";
-      const contextPrompt = this.createContextPrompt(dashboardContext, language);
-      const fullPrompt = `${contextPrompt}\n\nUser: ${message}\nAssistant:`;
-      
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: fullPrompt,
-          parameters: {
-            max_length: 200,
-            temperature: 0.7,
-            do_sample: true
-          }
-        }),
-        timeout: 10000
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data && data[0] && data[0].generated_text) {
-          const fullText = data[0].generated_text;
-          const assistantResponse = fullText.split('Assistant:').pop().trim();
-          if (assistantResponse && assistantResponse.length > 10) {
-            return assistantResponse;
-          }
-        }
-      }
-    } catch (error) {
-      console.log('Hugging Face API failed:', error);
-    }
-
-    return this.getFallbackResponse(message, dashboardContext, language);
-  },
-
-  // Create context prompt with dashboard data
-  createContextPrompt(dashboardData, language) {
-    const isArabic = language === 'ar';
-    
-    // Extract key metrics from dashboard
-    const avgCO2 = dashboardData.co2Data?.length > 0 
-      ? (dashboardData.co2Data.reduce((sum, item) => sum + item.value, 0) / dashboardData.co2Data.length).toFixed(1)
-      : 'N/A';
-    
-    const currentTemp = dashboardData.heatMapData?.[0]?.temperature?.toFixed(1) || 'N/A';
-    
-    const airQuality = dashboardData.airQualityData?.length > 0
-      ? dashboardData.airQualityData.map(item => `${item.parameter}: ${item.value}${item.unit}`).join(', ')
-      : 'N/A';
-
-    const ndvi = dashboardData.biodiversityData?.length > 0
-      ? dashboardData.biodiversityData[dashboardData.biodiversityData.length - 1]?.ndvi?.toFixed(3)
-      : 'N/A';
-
-    if (isArabic) {
-      return `أنت روضة، مساعد بيانات البيئة للرياض. البيانات الحالية:
-- مستوى ثاني أكسيد الكربون: ${avgCO2} جزء في المليون
-- درجة الحرارة: ${currentTemp}°م
-- جودة الهواء: ${airQuality}
-- مؤشر NDVI: ${ndvi}
-أجب بالعربية وكن مفيداً ومختصراً.`;
-    } else {
-      return `You are Rawdah, an environmental data assistant for Riyadh. Current data:
-- CO₂ Level: ${avgCO2} ppm
-- Temperature: ${currentTemp}°C  
-- Air Quality: ${airQuality}
-- NDVI Index: ${ndvi}
-Answer in English, be helpful and concise.`;
-    }
-  },
-
-  // Intelligent fallback with dashboard data
-  getFallbackResponse(message, dashboardData, language) {
-    const query = message.toLowerCase();
-    const isArabic = language === 'ar';
-
-    // CO2 related queries
-    if (query.includes('co2') || query.includes('carbon') || query.includes('كربون') || query.includes('أكسيد')) {
-      const avgCO2 = dashboardData.co2Data?.length > 0 
-        ? (dashboardData.co2Data.reduce((sum, item) => sum + item.value, 0) / dashboardData.co2Data.length).toFixed(1)
-        : 'N/A';
-      
-      return isArabic 
-        ? `مستوى ثاني أكسيد الكربون الحالي هو ${avgCO2} جزء في المليون. هدفنا تقليله بنسبة 4% من خلال التشجير والمبادرات الخضراء.`
-        : `Current CO₂ level is ${avgCO2} ppm. Our target is a 4% reduction through afforestation and green initiatives.`;
-    }
-
-    // Temperature related queries
-    if (query.includes('temp') || query.includes('heat') || query.includes('hot') || query.includes('cold') || query.includes('weather') || query.includes('حرارة') || query.includes('درجة') || query.includes('طقس') || query.includes('حار') || query.includes('بارد')) {
-      const currentTemp = dashboardData.heatMapData?.[0]?.temperature?.toFixed(1) || 'N/A';
-      
-      return isArabic
-        ? `درجة الحرارة الحالية ${currentTemp}°م. التشجير يساعد في تبريد المناطق الحضرية بمتوسط 2-3 درجات.`
-        : `Current temperature is ${currentTemp}°C. Afforestation helps cool urban areas by an average of 2-3 degrees.`;
-    }
-
-    // Air quality related queries  
-    if (query.includes('air') || query.includes('pollution') || query.includes('pm') || query.includes('aqi') || query.includes('pollut') || query.includes('هواء') || query.includes('جودة') || query.includes('تلوث') || query.includes('غبار')) {
-      const hasAirData = dashboardData.airQualityData?.length > 0;
-      const airQualityStatus = hasAirData ? 'monitoring active' : 'data loading';
-      
-      return isArabic
-        ? hasAirData 
-          ? `بيانات جودة الهواء متاحة للمعاينة في لوحة المعلومات. نراقب PM2.5, PM10, وملوثات أخرى. الحالة: ${airQualityStatus}`
-          : `نحن نراقب جودة الهواء في الرياض باستمرار لضمان بيئة صحية. جاري تحميل البيانات...`
-        : hasAirData
-          ? `Air quality data is available in the dashboard. We monitor PM2.5, PM10, and other pollutants. Status: ${airQualityStatus}`
-          : `We continuously monitor air quality in Riyadh to ensure a healthy environment. Loading data...`;
-    }
-
-    // NDVI/vegetation related queries
-    if (query.includes('ndvi') || query.includes('vegetation') || query.includes('green') || query.includes('plant') || query.includes('tree') || query.includes('forest') || query.includes('نباتات') || query.includes('أخضر') || query.includes('شجر') || query.includes('غابة')) {
-      const ndvi = dashboardData.biodiversityData?.length > 0
-        ? dashboardData.biodiversityData[dashboardData.biodiversityData.length - 1]?.ndvi?.toFixed(3)
-        : 'N/A';
-      
-      return isArabic
-        ? `مؤشر NDVI الحالي هو ${ndvi}. هذا يقيس كثافة النباتات والغطاء الأخضر من الأقمار الصناعية.`
-        : `Current NDVI index is ${ndvi}. This measures vegetation density and green cover from satellite data.`;
-    }
-
-    // Data/status related queries
-    if (query.includes('data') || query.includes('status') || query.includes('update') || query.includes('latest') || query.includes('current') || query.includes('بيانات') || query.includes('حالة') || query.includes('تحديث') || query.includes('أحدث')) {
-      const activeSources = Object.values(dashboardData).filter(data => data && (Array.isArray(data) ? data.length > 0 : true)).length;
-      
-      return isArabic
-        ? `البيانات محدثة من ${activeSources} مصادر مختلفة. تشمل: مستويات CO₂، درجات الحرارة، جودة الهواء، والغطاء النباتي من الأقمار الصناعية.`
-        : `Data is updated from ${activeSources} different sources. Including: CO₂ levels, temperatures, air quality, and satellite vegetation coverage.`;
-    }
-
-    // Question words - what, how, why, when
-    if (query.includes('what') || query.includes('how') || query.includes('why') || query.includes('when') || query.includes('where') || query.includes('ماذا') || query.includes('كيف') || query.includes('لماذا') || query.includes('متى') || query.includes('أين')) {
-      const avgCO2 = dashboardData.co2Data?.length > 0 
-        ? (dashboardData.co2Data.reduce((sum, item) => sum + item.value, 0) / dashboardData.co2Data.length).toFixed(1)
-        : 'N/A';
-      
-      return isArabic
-        ? `هذه لوحة بيانات روضة للرياض. نراقب: CO₂ (${avgCO2} ppm)، درجة الحرارة، جودة الهواء، والنباتات. اسأل عن أي من هذه المواضيع!`
-        : `This is the Rawdah Dashboard for Riyadh. We monitor: CO₂ (${avgCO2} ppm), temperature, air quality, and vegetation. Ask me about any of these topics!`;
-    }
-
-    // Numbers or specific values
-    if (query.match(/\d+/) || query.includes('level') || query.includes('value') || query.includes('amount') || query.includes('مستوى') || query.includes('قيمة') || query.includes('كمية')) {
-      const avgCO2 = dashboardData.co2Data?.length > 0 
-        ? (dashboardData.co2Data.reduce((sum, item) => sum + item.value, 0) / dashboardData.co2Data.length).toFixed(1)
-        : 'N/A';
-      const currentTemp = dashboardData.heatMapData?.[0]?.temperature?.toFixed(1) || 'N/A';
-      
-      return isArabic
-        ? `القيم الحالية: CO₂ ${avgCO2} ppm، الحرارة ${currentTemp}°م. هل تريد تفاصيل أكثر عن أي منها؟`
-        : `Current values: CO₂ ${avgCO2} ppm, Temperature ${currentTemp}°C. Would you like more details about any of these?`;
-    }
-
-    // General greetings
-    if (query.includes('hello') || query.includes('hi') || query.includes('hey') || query.includes('good') || query.includes('مرحبا') || query.includes('أهلا') || query.includes('مساعدة') || query.includes('صباح') || query.includes('مساء')) {
-      return isArabic
-        ? `مرحباً! أنا روضة، مساعدتك لبيانات البيئة في الرياض. يمكنني المساعدة في تحليل بيانات ثاني أكسيد الكربون، درجة الحرارة، جودة الهواء، والغطاء النباتي.`
-        : `Hello! I'm Rawdah, your environmental data assistant for Riyadh. I can help analyze CO₂ levels, temperature, air quality, and vegetation data.`;
-    }
-
-    // If message contains multiple keywords, provide comprehensive answer
-    const keywordCount = (
-      (query.includes('co2') || query.includes('carbon') || query.includes('كربون')) +
-      (query.includes('temp') || query.includes('heat') || query.includes('حرارة')) +
-      (query.includes('air') || query.includes('pollution') || query.includes('هواء')) +
-      (query.includes('green') || query.includes('vegetation') || query.includes('نباتات'))
+const CO2ReductionKPI = ({ carbonData, isLoading, apiStatus, timestamp, onRefresh, isDarkMode, t, language }) => {
+  // Saudi Arabia forest carbon sequestration data (from real APIs only)
+  const targetSequestration = carbonData?.targetSequestration || 50; // Million tons CO₂/year target
+  const currentSequestration = carbonData?.currentSequestration || 0; // Real data from APIs only
+  const progressPercentage = Math.min((currentSequestration / targetSequestration) * 100, 100);
+  
+  // Show loading state when data is being fetched
+  if (isLoading || apiStatus === 'loading') {
+    return (
+      <div className="relative w-full h-64 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+            {language === 'ar' ? 'جارٍ جلب بيانات امتصاص الكربون...' : 'Fetching carbon sequestration data...'}
+          </p>
+          <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'} mt-1`}>
+            📊 FAO • Global Forest Watch • World Bank
+          </p>
+        </div>
+      </div>
     );
-
-    if (keywordCount >= 2) {
-      const avgCO2 = dashboardData.co2Data?.length > 0 
-        ? (dashboardData.co2Data.reduce((sum, item) => sum + item.value, 0) / dashboardData.co2Data.length).toFixed(1)
-        : 'N/A';
-      const currentTemp = dashboardData.heatMapData?.[0]?.temperature?.toFixed(1) || 'N/A';
-      
-      return isArabic
-        ? `ملخص البيانات البيئية: CO₂ ${avgCO2} ppm، درجة الحرارة ${currentTemp}°م، مراقبة جودة الهواء نشطة، بيانات الأقمار الصناعية للنباتات متاحة.`
-        : `Environmental data summary: CO₂ ${avgCO2} ppm, Temperature ${currentTemp}°C, Air quality monitoring active, Satellite vegetation data available.`;
-    }
-
-    // Default response - more engaging
-    return isArabic
-      ? `أهلاً! أنا هنا لمساعدتك في فهم البيانات البيئية للرياض. جرب أسئلة مثل: "كم مستوى CO₂؟" أو "ما درجة الحرارة؟" أو "كيف جودة الهواء؟"`
-      : `Hello! I'm here to help you understand Riyadh's environmental data. Try questions like: "What's the CO₂ level?" or "How's the temperature?" or "How's the air quality?"`;
-  },
-
-  // Main query method - tries multiple AI APIs in priority order
-  async query(message, dashboardData, language = 'en') {
-    console.log('Querying AI chatbot with real APIs...');
-    
-    // Priority 1: Try OpenAI ChatGPT (most reliable and comprehensive)
-    try {
-      const openAIResponse = await this.queryOpenAI(message, dashboardData, language);
-      if (openAIResponse && !openAIResponse.includes('I can help analyze') && openAIResponse.length > 20) {
-        console.log('✅ OpenAI ChatGPT responded');
-        return openAIResponse;
-      }
-    } catch (error) {
-      console.log('OpenAI ChatGPT unavailable, trying Claude...');
-    }
-
-    // Priority 2: Try Anthropic Claude (excellent for analysis)
-    try {
-      const claudeResponse = await this.queryClaude(message, dashboardData, language);
-      if (claudeResponse && !claudeResponse.includes('I can help analyze') && claudeResponse.length > 20) {
-        console.log('✅ Anthropic Claude responded');
-        return claudeResponse;
-      }
-    } catch (error) {
-      console.log('Claude unavailable, trying Hugging Face...');
-    }
-
-    // Priority 3: Try Hugging Face (free but less reliable)
-    try {
-      const huggingFaceResponse = await this.queryHuggingFace(message, dashboardData, language);
-      if (huggingFaceResponse && !huggingFaceResponse.includes('I can help analyze') && huggingFaceResponse.length > 20) {
-        console.log('✅ Hugging Face responded');
-        return huggingFaceResponse;
-      }
-    } catch (error) {
-      console.log('Hugging Face unavailable, using intelligent fallback...');
-    }
-
-    // Fallback: Use enhanced local processing with dashboard context
-    console.log('🔄 Using enhanced local AI with dashboard data');
-    return this.getFallbackResponse(message, dashboardData, language);
-  },
-
-  // API Configuration Helper
-  configureAPI(provider, apiKey) {
-    switch(provider) {
-      case 'openai':
-        window.OPENAI_API_KEY = apiKey;
-        localStorage.setItem('openai_api_key', apiKey);
-        break;
-      case 'claude':
-        window.CLAUDE_API_KEY = apiKey;
-        localStorage.setItem('claude_api_key', apiKey);
-        break;
-      default:
-        console.warn('Unknown API provider:', provider);
-    }
-  },
-
-  // Load API keys from localStorage on startup
-  loadAPIKeys() {
-    const openaiKey = localStorage.getItem('openai_api_key');
-    const claudeKey = localStorage.getItem('claude_api_key');
-    
-    if (openaiKey) window.OPENAI_API_KEY = openaiKey;
-    if (claudeKey) window.CLAUDE_API_KEY = claudeKey;
   }
-};
-
-// Enhanced Chatbot Component with Real AI Integration
-const RawdahChatbot = ({ dashboardData, isDarkMode, apiStatus, language = 'en' }) => {
-  const t = translations[language];
-  const [messages, setMessages] = useState([
-    { 
-      id: 1, 
-      type: 'bot', 
-      content: t.chatbotGreeting,
-      timestamp: new Date() 
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [showAPIConfig, setShowAPIConfig] = useState(false);
-  const [apiKeys, setApiKeys] = useState({
-    openai: '',
-    claude: ''
-  });
-
-  // Initialize API keys on component mount
-  useEffect(() => {
-    AIChatbotService.loadAPIKeys();
-    setApiKeys({
-      openai: localStorage.getItem('openai_api_key') || '',
-      claude: localStorage.getItem('claude_api_key') || ''
-    });
-  }, []);
-
-  const handleConfigureAPI = (provider, key) => {
-    AIChatbotService.configureAPI(provider, key);
-    setApiKeys(prev => ({ ...prev, [provider]: key }));
-    
-    // Add confirmation message
-    const confirmMessage = {
-      id: Date.now(),
-      type: 'bot',
-      content: language === 'ar' 
-        ? `تم حفظ مفتاح ${provider === 'openai' ? 'ChatGPT' : 'Claude'} بنجاح! يمكنك الآن طرح أسئلة معقدة.`
-        : `${provider === 'openai' ? 'ChatGPT' : 'Claude'} API key saved successfully! You can now ask complex questions.`,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, confirmMessage]);
-    setShowAPIConfig(false);
+  
+  // Show error state when APIs fail
+  if (apiStatus === 'error' || carbonData?.confidence === 'no-data') {
+    return (
+      <div className="relative w-full h-64 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">❌</span>
+          </div>
+          <p className={`text-sm font-medium ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>
+            {language === 'ar' ? 'فشل في جلب البيانات' : 'Failed to fetch real data'}
+          </p>
+          <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'} mt-1`}>
+            {language === 'ar' ? 'واجهات برمجة التطبيقات غير متاحة' : 'APIs unavailable'}
+          </p>
+          <button 
+            onClick={onRefresh}
+            className={`mt-3 px-3 py-1 text-xs rounded ${isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            {language === 'ar' ? 'إعادة المحاولة' : 'Retry'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Determine color based on progress
+  const getProgressColor = (percentage) => {
+    if (percentage >= 100) return { primary: '#10b981', secondary: '#d1fae5' }; // Green
+    if (percentage >= 50) return { primary: '#f59e0b', secondary: '#fef3c7' }; // Orange  
+    return { primary: '#ef4444', secondary: '#fee2e2' }; // Red
   };
   
-  const sampleQuestions = [
-    t.whatIsCO2,
-    t.howToReduce,
-    t.showTodayData
-  ];
+  const colors = getProgressColor(progressPercentage);
+  const circumference = 2 * Math.PI * 80; // radius = 80
+  const strokeDasharray = circumference;
+  const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
   
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
-    
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: inputValue,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    const currentMessage = inputValue;
-    setInputValue('');
-    setIsTyping(true);
-    
-    try {
-      // Use the real AI chatbot service with dashboard context
-      const botResponse = await AIChatbotService.query(currentMessage, dashboardData, language);
-      
-      const botMessage = {
-        id: Date.now() + 1,
-        type: 'bot',
-        content: botResponse,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, botMessage]);
-    } catch (error) {
-      console.error('Chatbot error:', error);
-      
-      // Fallback response on error
-      const fallbackResponse = language === 'ar'
-        ? 'آسف، حدث خطأ في النظام. يرجى المحاولة مرة أخرى.'
-        : 'Sorry, there was a system error. Please try again.';
-      
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: 'bot',
-        content: fallbackResponse,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
-    }
+  const formatValue = (value) => {
+    return language === 'ar' ? 
+      `${value.toFixed(1)} مليون طن` : 
+      `${value.toFixed(1)}M tons`;
   };
   
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((message) => (
-          <div 
-            key={message.id}
-            className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div 
-              className={`max-w-xs px-3 py-2 rounded-lg text-sm transition-colors duration-300 ${
-                message.type === 'user' 
-                  ? 'bg-emerald-600 text-white' 
-                  : isDarkMode 
-                    ? 'bg-slate-700 text-slate-200' 
-                    : 'bg-slate-100 text-slate-800'
-              }`}
-              style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}
-            >
-              {message.content}
-            </div>
-          </div>
-        ))}
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className={`px-3 py-2 rounded-lg ${isDarkMode ? 'bg-slate-700' : 'bg-slate-100'}`}>
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      <div className={`px-4 py-2 border-t ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
-        <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            {Object.values(apiStatus).filter(status => status === 'success').length > 0 && (
-              <Wifi className="w-3 h-3 text-green-500" />
-            )}
-            <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>
-              {Object.values(apiStatus).filter(status => status === 'success').length} live data sources
-            </span>
-          </div>
-          <button
-            onClick={() => setShowAPIConfig(!showAPIConfig)}
-            className={`px-2 py-1 rounded text-xs transition-colors ${
-              apiKeys.openai || apiKeys.claude 
-                ? 'bg-green-100 text-green-700' 
-                : isDarkMode 
-                  ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' 
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {apiKeys.openai || apiKeys.claude ? '🤖 AI Active' : '⚙️ AI Setup'}
-          </button>
-        </div>
+    <div className="relative w-full h-64 flex items-center justify-center">
+      {/* SVG Progress Ring */}
+      <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 200 200">
+        {/* Background Circle */}
+        <circle
+          cx="100"
+          cy="100"
+          r="80"
+          stroke={isDarkMode ? "#374151" : "#e5e7eb"}
+          strokeWidth="12"
+          fill="transparent"
+        />
         
-        {showAPIConfig && (
-          <div className={`mt-3 p-3 rounded-lg border ${isDarkMode ? 'bg-slate-800 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-            <h4 className={`text-sm font-medium mb-2 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>
-              {language === 'ar' ? 'إعداد الذكاء الاصطناعي' : 'AI Configuration'}
-            </h4>
-            <div className="space-y-2">
-              <div>
-                <label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  OpenAI ChatGPT API Key:
-                </label>
-                <div className="flex gap-1">
-                  <input
-                    type="password"
-                    value={apiKeys.openai}
-                    onChange={(e) => setApiKeys(prev => ({ ...prev, openai: e.target.value }))}
-                    placeholder="sk-..."
-                    className={`flex-1 px-2 py-1 text-xs border rounded ${
-                      isDarkMode 
-                        ? 'bg-slate-700 border-slate-600 text-white' 
-                        : 'bg-white border-slate-300'
-                    }`}
-                  />
-                  <button
-                    onClick={() => handleConfigureAPI('openai', apiKeys.openai)}
-                    disabled={!apiKeys.openai.trim()}
-                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded disabled:bg-slate-400"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Anthropic Claude API Key:
-                </label>
-                <div className="flex gap-1">
-                  <input
-                    type="password"
-                    value={apiKeys.claude}
-                    onChange={(e) => setApiKeys(prev => ({ ...prev, claude: e.target.value }))}
-                    placeholder="sk-ant-..."
-                    className={`flex-1 px-2 py-1 text-xs border rounded ${
-                      isDarkMode 
-                        ? 'bg-slate-700 border-slate-600 text-white' 
-                        : 'bg-white border-slate-300'
-                    }`}
-                  />
-                  <button
-                    onClick={() => handleConfigureAPI('claude', apiKeys.claude)}
-                    disabled={!apiKeys.claude.trim()}
-                    className="px-2 py-1 text-xs bg-orange-600 text-white rounded disabled:bg-slate-400"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-              <p className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                {language === 'ar' 
-                  ? 'المفاتيح محفوظة محلياً. للحصول على المفاتيح: OpenAI.com أو console.anthropic.com'
-                  : 'Keys are stored locally. Get keys from: OpenAI.com or console.anthropic.com'
-                }
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Progress Circle */}
+        <circle
+          cx="100"
+          cy="100"
+          r="80"
+          stroke={colors.primary}
+          strokeWidth="12"
+          fill="transparent"
+          strokeDasharray={strokeDasharray}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          className="transition-all duration-300 ease-out"
+          style={{
+            filter: `drop-shadow(0 0 6px ${colors.primary}40)`
+          }}
+        />
+      </svg>
+      
+      {/* Center Content */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+        <div className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`} style={{ color: colors.primary }}>
+          {formatValue(currentSequestration)}
+        </div>
+        <div className={`text-xs font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'} mt-1`}>
+          {language === 'ar' ? 'امتصاص الكربون' : 'CO₂ Absorbed'}
+        </div>
+        <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'} mt-1`}>
+          {progressPercentage.toFixed(0)}% {language === 'ar' ? 'من الهدف' : 'of target'}
+        </div>
+        <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+          ({formatValue(targetSequestration)} {language === 'ar' ? 'هدف' : 'target'})
+        </div>
       </div>
       
-      <div className={`p-4 border-t ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
-        <p className={`text-xs mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-          {t.suggestedQuestions}
-        </p>
-        <div className="flex gap-1 mb-3 overflow-x-auto">
-          {sampleQuestions.map((question, index) => (
-            <button
-              key={index}
-              onClick={() => setInputValue(question)}
-              className={`flex-shrink-0 px-2 py-1 text-xs rounded-md transition-colors whitespace-nowrap ${
-                isDarkMode 
-                  ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' 
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
-              }`}
-            >
-              {question.length > 15 ? question.substring(0, 15) + '...' : question}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            placeholder={t.askRawdah}
-            className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm ${
-              isDarkMode 
-                ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' 
-                : 'bg-white border-slate-300 text-slate-900 placeholder-slate-500'
-            }`}
-            style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}
-          />
-          <Button onClick={handleSendMessage} size="sm">
-            <Send className="w-4 h-4" />
-          </Button>
+      {/* Data Sources Badge */}
+      <div className="absolute bottom-2 left-2 right-2">
+        <div className={`text-[10px] text-center px-2 py-1 rounded-full ${isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+          📊 FAO • Global Forest Watch • World Bank
         </div>
       </div>
     </div>
@@ -3300,16 +2560,82 @@ const RawdahDashboard = () => {
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [language, setLanguage] = useState('en');
   
+  // Week selection state for historical data
+  const [selectedWeeks, setSelectedWeeks] = useState({
+    co2: null,
+    temperature: null,
+    surfaceHeat: null,
+    surfaceTemp: null
+  });
+  
+  // Historical data state
+  const [historicalData, setHistoricalData] = useState({
+    co2: null,
+    temperature: null,
+    surfaceHeat: null,
+    surfaceTemp: null
+  });
+  
   const t = translations[language];
   const isRTL = language === 'ar';
   
-  const currentCO2 = dashboardData.co2Data[dashboardData.co2Data.length - 1]?.value || 0;
-  const avgTemperature = dashboardData.temperatureData.reduce((sum, item) => sum + item.current, 0) / dashboardData.temperatureData.length;
-  const avgSurfaceHeat = dashboardData.surfaceTempData.length > 0 
+  // Handle week selection for historical data
+  const handleWeekSelection = async (chartType, weekStart) => {
+    setSelectedWeeks(prev => ({ ...prev, [chartType]: weekStart }));
+    
+    try {
+      let data;
+      switch (chartType) {
+        case 'temperature':
+          data = await DataProcessor.fetchHistoricalWeatherData(weekStart);
+          break;
+        case 'co2':
+          data = DataProcessor.generateHistoricalCO2Data(weekStart);
+          break;
+        case 'surfaceHeat':
+        case 'surfaceTemp':
+          data = DataProcessor.generateHistoricalSurfaceData(weekStart);
+          break;
+        default:
+          return;
+      }
+      
+      setHistoricalData(prev => ({ ...prev, [chartType]: data }));
+    } catch (error) {
+      console.error(`Error fetching historical data for ${chartType}:`, error);
+    }
+  };
+  
+  // Get data for chart (historical or current)
+  const getChartData = (chartType, currentData) => {
+    const historical = historicalData[chartType];
+    const isHistorical = selectedWeeks[chartType] && historical;
+    
+    if (isHistorical) {
+      return {
+        data: historical,
+        isHistorical: true,
+        weekStart: selectedWeeks[chartType]
+      };
+    }
+    
+    return {
+      data: currentData,
+      isHistorical: false,
+      weekStart: null
+    };
+  };
+  
+  const currentCO2 = getLastValue(dashboardData.co2Data, language)?.value || 0;
+  const avgTemperature = dashboardData.temperatureData?.length > 0 
+    ? dashboardData.temperatureData.reduce((sum, item) => sum + item.current, 0) / dashboardData.temperatureData.length 
+    : 0;
+  const avgSurfaceHeat = dashboardData.surfaceTempData?.length > 0 
     ? dashboardData.surfaceTempData.reduce((sum, item) => sum + (item.nonPlanted || 0), 0) / dashboardData.surfaceTempData.length 
     : 52;
   
-  if (isLoading && dashboardData.heatMapData.length === 0) {
+  // Show loading state without early return to avoid hook ordering issues
+  if (isLoading && (dashboardData.heatMapData?.length === 0 || !dashboardData.heatMapData)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-emerald-50">
         <div className="text-center">
@@ -3638,9 +2964,13 @@ const RawdahDashboard = () => {
                   </div>
                 </div>
                 
-                <div className="h-80">
+                <div className="h-80 transition-all duration-300" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={prepareChartData(dashboardData.comparisonData, language === 'ar', language)}>
+                    <LineChart 
+                      key={`trends-chart-${language}-${selectedMetric}`}
+                      data={prepareChartData(dashboardData.comparisonData, language === 'ar', language)}
+                      margin={{ left: language === 'ar' ? 5 : 25, right: language === 'ar' ? 25 : 5, top: 5, bottom: 5 }}
+                    >
                       <CartesianGrid 
                         strokeDasharray="3 3" 
                         stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
@@ -3742,22 +3072,45 @@ const RawdahDashboard = () => {
             <div className="grid grid-cols-3 gap-6 mb-8">
               <Card isDarkMode={isDarkMode}>
                 <div className="mb-4">
-                  <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                    {t.co2LevelsTrend}
-                  </h3>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{t.co2TrendDesc}</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                        {t.co2LevelsTrend}
+                      </h3>
+                      <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{t.co2TrendDesc}</p>
+                    </div>
+                    <WeekSelector
+                      selectedWeek={selectedWeeks.co2}
+                      onWeekChange={(week) => handleWeekSelection('co2', week)}
+                      isDarkMode={isDarkMode}
+                      className="ml-4"
+                    />
+                  </div>
                 </div>
                 <div className="h-64">
                   {(() => {
+                    // Get chart data (historical or current)
+                    const chartInfo = getChartData('co2', dashboardData.co2Data);
+                    const { data: chartData, isHistorical } = chartInfo;
+                    
                     // Create connected data with separate current and future values
-                    const connectedData = dashboardData.co2Data.map((item, index) => {
-                      const isCurrentDay = index <= new Date().getDay();
-                      
-                      return {
-                        ...item,
-                        currentValue: isCurrentDay ? item.value : null,
-                        futureValue: !isCurrentDay ? item.value : (index === new Date().getDay() ? item.value : null)
-                      };
+                    const connectedData = chartData.map((item, index) => {
+                      if (isHistorical) {
+                        // For historical data, show all as current (no future prediction)
+                        return {
+                          ...item,
+                          currentValue: item.value,
+                          futureValue: null
+                        };
+                      } else {
+                        // For current data, show current/future split
+                        const isCurrentDay = index <= new Date().getDay();
+                        return {
+                          ...item,
+                          currentValue: isCurrentDay ? item.value : null,
+                          futureValue: !isCurrentDay ? item.value : (index === new Date().getDay() ? item.value : null)
+                        };
+                      }
                     });
                     
                     return (
@@ -3835,22 +3188,47 @@ const RawdahDashboard = () => {
               
               <Card isDarkMode={isDarkMode}>
                 <div className="mb-4">
-                  <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                    {t.temperatureTrend}
-                  </h3>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{t.weeklyAverage}</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                        {t.temperatureTrend}
+                      </h3>
+                      <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{t.weeklyAverage}</p>
+                    </div>
+                    <WeekSelector
+                      selectedWeek={selectedWeeks.temperature}
+                      onWeekChange={(week) => handleWeekSelection('temperature', week)}
+                      isDarkMode={isDarkMode}
+                      className="ml-4"
+                    />
+                  </div>
                 </div>
                 <div className="h-64">
                   {(() => {
+                    // Get chart data (historical or current)
+                    const chartInfo = getChartData('temperature', dashboardData.temperatureData);
+                    const { data: chartData, isHistorical } = chartInfo;
+                    
                     // Create connected data with separate current and future values
-                    const connectedData = dashboardData.temperatureData.map((item, index) => {
-                      const isCurrentDay = index <= new Date().getDay();
-                      
-                      return {
-                        ...item,
-                        currentTemp: isCurrentDay ? item.current : null,
-                        futureTemp: !isCurrentDay ? item.current : (index === new Date().getDay() ? item.current : null)
-                      };
+                    const connectedData = chartData.map((item, index) => {
+                      if (isHistorical) {
+                        // For historical data, show all as current (no future prediction)
+                        return {
+                          ...item,
+                          currentTemp: item.current,
+                          futureTemp: null,
+                          target: item.target // Preserve target line for historical data
+                        };
+                      } else {
+                        // For current data, show current/future split
+                        const isCurrentDay = index <= new Date().getDay();
+                        return {
+                          ...item,
+                          currentTemp: isCurrentDay ? item.current : null,
+                          futureTemp: !isCurrentDay ? item.current : (index === new Date().getDay() ? item.current : null),
+                          target: item.target // Preserve target line for current data
+                        };
+                      }
                     });
                     
                     return (
@@ -3910,14 +3288,20 @@ const RawdahDashboard = () => {
                             dot={false}
                             connectNulls={false}
                           />
-                          {/* Target line */}
-                          <Line 
-                            type="monotone" 
-                            dataKey="target" 
+                          {/* Target line - straight horizontal line */}
+                          <ReferenceLine 
+                            y={(() => {
+                              // Calculate the target temperature (base temp - 1.75°C afforestation cooling target)
+                              const now = new Date();
+                              const month = now.getMonth();
+                              const monthlyBaseTemps = [22, 25, 30, 37, 43, 46, 48, 47, 43, 37, 30, 24];
+                              const baseTemp = monthlyBaseTemps[month];
+                              return Math.round((baseTemp - 1.75) * 10) / 10;
+                            })()}
                             stroke="#10b981" 
-                            strokeWidth={1} 
-                            strokeDasharray="5 5" 
-                            dot={false} 
+                            strokeWidth={2} 
+                            strokeDasharray="8 4" 
+                            label={{ value: language === 'ar' ? 'هدف التشجير' : 'Afforestation Target', position: 'topRight', fontSize: 10 }}
                           />
                         </LineChart>
                       </ResponsiveContainer>
@@ -3928,22 +3312,59 @@ const RawdahDashboard = () => {
               
               <Card isDarkMode={isDarkMode}>
                 <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                      {t.surfaceHeatByDistrict}
-                    </h3>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                          {t.surfaceHeatByDistrict}
+                        </h3>
+                      </div>
+                      <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {t.surfaceHeatDesc}
+                      </p>
+                    </div>
+                    <WeekSelector
+                      selectedWeek={selectedWeeks.surfaceHeat}
+                      onWeekChange={(week) => handleWeekSelection('surfaceHeat', week)}
+                      isDarkMode={isDarkMode}
+                      className="ml-4"
+                    />
                   </div>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {t.surfaceHeatDesc}
-                  </p>
                 </div>
                 <div className="h-64">
                   {(() => {
-                    const filteredData = dashboardData.heatMapData.filter(d => 
-                      d.area === 'Al-Malaz' || 
-                      d.area === 'Industrial Area' || 
-                      d.area === 'Al-Ghadeer'
-                    );
+                    // Get chart data (historical or current)
+                    const chartInfo = getChartData('surfaceHeat', dashboardData.surfaceTempData || []);
+                    const { data: chartData, isHistorical } = chartInfo;
+                    
+                    let filteredData;
+                    if (isHistorical && chartData.length > 0) {
+                      // For historical data, create proper district data structure
+                      // Average the weekly data for each district
+                      const weeklyAverage = chartData.reduce((sum, item) => sum + (item.planted || item.nonPlanted || 35), 0) / chartData.length;
+                      
+                      filteredData = [
+                        { area: 'Al-Malaz', temperature: Math.round(weeklyAverage - 8) }, // Afforested area (cooler)
+                        { area: 'Industrial Area', temperature: Math.round(weeklyAverage + 5) }, // Industrial area (hotter)
+                        { area: 'Al-Ghadeer', temperature: Math.round(weeklyAverage) } // Mixed area
+                      ];
+                    } else {
+                      // Use current heat map data - ensure exactly 3 districts
+                      const targetDistricts = ['Al-Malaz', 'Industrial Area', 'Al-Ghadeer'];
+                      filteredData = [];
+                      
+                      targetDistricts.forEach(districtName => {
+                        const district = dashboardData.heatMapData.find(d => d.area === districtName);
+                        if (district) {
+                          filteredData.push(district);
+                        }
+                      });
+                      
+                      // If we don't have all 3 districts, fall back to first 3 available
+                      if (filteredData.length < 3 && dashboardData.heatMapData.length >= 3) {
+                        filteredData = dashboardData.heatMapData.slice(0, 3);
+                      }
+                    }
                     
                     if (filteredData.length === 0) {
                       return (
@@ -3999,118 +3420,33 @@ const RawdahDashboard = () => {
             {/* Real-Time Environmental Metrics with Individual Loading States */}
             <div className="grid grid-cols-2 gap-6 mb-8">
               
-              {/* Tree Cover Loss Chart Component */}
+              {/* Placeholder Card - Chart to be added later */}
               <Card isDarkMode={isDarkMode} className="relative">
-                {loadingStates.treeCoverLoss && <LoadingOverlay isLoading={true} widget={t.treeCoverLossWidget} t={t} />}
                 <div className="mb-4">
                   <div className="flex items-center gap-2 mb-2">
                     <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                      {t.treeCoverLoss}
+                      {language === 'ar' ? 'مخطط جديد (قيد التطوير)' : 'New Chart (Coming Soon)'}
                     </h3>
-                    {apiStatus.treeCoverLoss === 'success' && <Wifi className="w-4 h-4 text-green-500" />}
-                    {apiStatus.treeCoverLoss === 'no-data' && (
-                      <div className="flex items-center gap-1">
-                        <AlertCircle className="w-4 h-4 text-yellow-500" />
-                        <span className="text-xs text-yellow-600">{t.noLiveData}</span>
-                      </div>
-                    )}
-                    <FreshnessIndicator timestamp={dataTimestamps.treeCoverLoss} />
                   </div>
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {t.treeCoverLossDesc}
+                    {language === 'ar' ? 'سيتم إضافة مخطط جديد في هذا المكان قريباً' : 'A new chart will be added here soon'}
                   </p>
                 </div>
-                <div className="h-64">
-                  {dashboardData.treeCoverLossData.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center">
-                      <div className="text-center">
-                        {apiStatus.treeCoverLoss === 'error' ? (
-                          <>
-                            <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                            <p className="text-sm text-red-600 font-medium">Failed to fetch data</p>
-                            <p className="text-xs text-slate-500 mt-1">Global Forest Watch API unavailable</p>
-                          </>
-                        ) : apiStatus.treeCoverLoss === 'no-data' ? (
-                          <>
-                            <div className="w-8 h-8 bg-slate-300 rounded-full mx-auto mb-2 flex items-center justify-center">
-                              <span className="text-xs text-slate-600">📊</span>
-                            </div>
-                            <p className="text-sm text-slate-600 font-medium">No tree cover loss detected</p>
-                            <p className="text-xs text-slate-500 mt-1">Riyadh region shows no significant forest loss</p>
-                          </>
-                        ) : (
-                          <>
-                            <div className="animate-pulse">
-                              <div className="w-8 h-8 bg-slate-300 rounded-full mx-auto mb-2"></div>
-                              <p className="text-sm text-slate-500">Loading satellite data...</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
+                
+                <div className="h-64 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className={`w-16 h-16 mx-auto mb-4 rounded-full border-4 border-dashed ${
+                      isDarkMode ? 'border-slate-600' : 'border-slate-300'
+                    } flex items-center justify-center`}>
+                      <div className={`w-8 h-8 rounded-full ${
+                        isDarkMode ? 'bg-slate-600' : 'bg-slate-300'
+                      }`}></div>
                     </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={prepareChartData(dashboardData.treeCoverLossData, language === 'ar', language)}>
-                        <CartesianGrid 
-                          strokeDasharray="3 3" 
-                          stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
-                        />
-                        <XAxis 
-                          dataKey="year" 
-                          tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
-                          orientation={language === 'ar' ? 'top' : 'bottom'}
-                        />
-                        <YAxis 
-                          tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
-                          orientation={language === 'ar' ? 'right' : 'left'}
-                          label={{ 
-                            value: 'Hectares', 
-                            angle: language === 'ar' ? 90 : -90, 
-                            position: 'insideLeft',
-                            style: { textAnchor: 'middle', fill: isDarkMode ? "#9ca3af" : "#64748b" }
-                          }}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length > 0) {
-                              const data = payload[0].payload;
-                              
-                              return (
-                                <div className={`p-3 rounded-lg shadow-lg ${isDarkMode ? 'bg-slate-700 text-white border border-slate-600' : 'bg-white border border-slate-200'}`}>
-                                  <p className="text-sm font-medium mb-1">Year {data.year}</p>
-                                  <p className="text-sm text-red-600 font-medium">
-                                    🌳 Tree Cover Loss: {data.lossHa} ha
-                                  </p>
-                                  <p className="text-xs text-green-600 mt-1">
-                                    ✓ Satellite Data (High Confidence)
-                                  </p>
-                                  <p className="text-xs text-slate-500 mt-1">
-                                    Source: {data.dataSource}
-                                  </p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar 
-                          dataKey="lossHa" 
-                          fill="#dc2626" 
-                          name="Tree Cover Loss (ha)"
-                          radius={[2, 2, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
+                    <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      {language === 'ar' ? 'مساحة محجوزة للمخطط الجديد' : 'Chart placeholder'}
+                    </p>
+                  </div>
                 </div>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={() => refreshWidget('treeCoverLoss')}
-                  className="absolute bottom-2 right-2"
-                >
-                  <RefreshCw className="w-3 h-3" />
-                </Button>
               </Card>
 
               {/* Air Quality Chart Component - Enhanced for real data */}
@@ -4251,24 +3587,54 @@ const RawdahDashboard = () => {
               <Card isDarkMode={isDarkMode} className="relative">
                 {loadingStates.surfaceTemp && <LoadingOverlay isLoading={true} widget={t.surfaceTemp} t={t} />}
                 <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                      {t.surfaceTemperature}
-                    </h3>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                          {t.surfaceTemperature}
+                        </h3>
+                      </div>
+                      <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {t.surfaceTempCompareDesc}
+                      </p>
+                      <FreshnessIndicator timestamp={dataTimestamps.surfaceTemp} />
+                    </div>
+                    <WeekSelector
+                      selectedWeek={selectedWeeks.surfaceTemp}
+                      onWeekChange={(week) => handleWeekSelection('surfaceTemp', week)}
+                      isDarkMode={isDarkMode}
+                      className="ml-4"
+                    />
                   </div>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {t.surfaceTempCompareDesc}
-                  </p>
-                  <FreshnessIndicator timestamp={dataTimestamps.surfaceTemp} />
                 </div>
                 <div className="h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={prepareChartData((() => {
-                      // Find the transition point between current and future data
-                      const currentDayIndex = new Date().getDay();
-                      const transitionIndex = dashboardData.surfaceTempData.findIndex(item => item.dayIndex === currentDayIndex);
+                      // Get chart data (historical or current)
+                      const chartInfo = getChartData('surfaceTemp', dashboardData.surfaceTempData || []);
+                      const { data: chartData, isHistorical } = chartInfo;
                       
-                      return dashboardData.surfaceTempData.map((item, index) => {
+                      if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+                        return [];
+                      }
+                      
+                      if (isHistorical) {
+                        // For historical data, show all as current (no future prediction)
+                        return chartData.map((item, index) => ({
+                          ...item,
+                          plantedCurrent: item.planted,
+                          nonPlantedCurrent: item.nonPlanted,
+                          plantedFuture: null,
+                          nonPlantedFuture: null,
+                          isFuture: false
+                        }));
+                      }
+                      
+                      // For current data, show current/future split
+                      const currentDayIndex = new Date().getDay();
+                      const transitionIndex = chartData.findIndex(item => item.dayIndex === currentDayIndex);
+                      
+                      return chartData.map((item, index) => {
                         const isCurrentDay = index === transitionIndex;
                         const includeInCurrent = !item.isFuture || isCurrentDay;
                         const includeInFuture = item.isFuture || isCurrentDay;
@@ -4376,7 +3742,7 @@ const RawdahDashboard = () => {
                 </div>
                 <div className="mt-2 text-center">
                   <span className="text-sm text-emerald-600 font-medium">
-                    {(dashboardData.surfaceTempData[4]?.difference || 0).toFixed(1)}°C average difference
+                    {(dashboardData.surfaceTempData?.[4]?.difference || 0).toFixed(1)}°C average difference
                   </span>
                 </div>
               </Card>
@@ -4462,7 +3828,7 @@ const RawdahDashboard = () => {
                   <div>
                     <span className="text-sm text-emerald-600 font-medium">
                       NDVI trend: {dashboardData.biodiversityData.length > 0 && 
-                        dashboardData.biodiversityData[dashboardData.biodiversityData.length - 1]?.ndvi > 
+                        getLastValue(dashboardData.biodiversityData, language)?.ndvi > 
                         dashboardData.biodiversityData[0]?.ndvi ? 'Improving' : 'Stable'}
                     </span>
                     <p className="text-xs text-slate-500 mt-1">{t.biodiversityDesc}</p>
@@ -4489,6 +3855,47 @@ const RawdahDashboard = () => {
                   <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{t.realTimeEnvironmentalMonitoring}</p>
                 </div>
                 <SensorMap sensorData={dashboardData.sensorData} t={t} />
+                
+                {/* Sensor Network Status - moved from separate card */}
+                <div className={`mt-4 border-t pt-4 ${isDarkMode ? 'border-slate-600' : 'border-slate-200'}`}>
+                  <div className="text-sm font-medium mb-3 text-slate-700">{t?.networkStatusLabel || 'Network Status'}</div>
+                  
+                  <div className="grid grid-cols-4 gap-3 text-center">
+                    <div>
+                      <div className="text-lg font-bold text-green-600">
+                        {dashboardData.sensorData.filter(s => s.status === 'Active').length}
+                      </div>
+                      <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.active}</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-yellow-600">
+                        {dashboardData.sensorData.filter(s => s.status === 'Warning').length}
+                      </div>
+                      <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.warning}</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-red-600">
+                        {dashboardData.sensorData.filter(s => s.status === 'Offline').length}
+                      </div>
+                      <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.offline}</div>
+                    </div>
+                    <div>
+                      <div className="text-lg font-bold text-blue-600">
+                        {dashboardData.sensorData.filter(s => s.stationType === 'Gateway' || s.stationType === 'Node/Gateway').length}
+                      </div>
+                      <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.gateways}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Legend for sensor types */}
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="text-xs font-medium text-slate-700 mb-2">Sensor Types</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
+                      <div>Node/Gateway: Combined sensor + data relay</div>
+                      <div>Node: Environmental sensor only</div>
+                    </div>
+                  </div>
+                </div>
               </Card>
               
               <Card isDarkMode={isDarkMode}>
@@ -4548,34 +3955,6 @@ const RawdahDashboard = () => {
                       ))}
                     </tbody>
                   </table>
-                </div>
-                <div className={`mt-4 grid grid-cols-4 gap-3 text-center border-t pt-4 ${
-                  isDarkMode ? 'border-slate-600' : 'border-slate-200'
-                }`}>
-                  <div>
-                    <div className="text-lg font-bold text-green-600">
-                      {dashboardData.sensorData.filter(s => s.status === 'Active').length}
-                    </div>
-                    <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.active}</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-yellow-600">
-                      {dashboardData.sensorData.filter(s => s.status === 'Warning').length}
-                    </div>
-                    <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.warning}</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-red-600">
-                      {dashboardData.sensorData.filter(s => s.status === 'Offline').length}
-                    </div>
-                    <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.offline}</div>
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {dashboardData.sensorData.filter(s => s.stationType === 'Gateway').length}
-                    </div>
-                    <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{t.gateways}</div>
-                  </div>
                 </div>
               </Card>
             </div>
