@@ -4,7 +4,7 @@
 import { Button, Card } from './Ui.js';
 import React, { useState, useEffect } from 'react';
 import { Send, Wifi } from 'lucide-react';
-import { getLastValue, translations } from './Translation.js';
+import { getLastValue, translations } from '../Translation.js';
 
 const AIChatbotService = {
   // OpenAI ChatGPT API Integration (via Vercel environment)

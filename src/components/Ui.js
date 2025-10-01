@@ -95,5 +95,80 @@ const WeekSelector = ({ selectedWeek, onWeekChange, isDarkMode = false, classNam
     </div>
   );
 };
+// ============================
+// Loading Overlay Component
+// ============================
+const LoadingOverlay = ({ isLoading, widget, t }) => {
+  if (!isLoading) return null;
+  
+  return (
+    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex items-center justify-center z-10">
+      <div className="flex flex-col items-center gap-2">
+        <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+        <span className="text-sm text-slate-600">{t?.loadingWidget || 'Loading'} {widget}...</span>
+      </div>
+    </div>
+  );
+};
+// ============================
+// Data Freshness Indicator Component
+// ============================
+const FreshnessIndicator = ({ timestamp, size = 'sm' }) => {
+  const [showTimestamp, setShowTimestamp] = useState(false);
+  const tooltipRef = useRef(null);
+  
+  // Close tooltip when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(event.target)) {
+        setShowTimestamp(false);
+      }
+    };
 
-export { Button, Card, WeekSelector };
+    if (showTimestamp) {
+      document.addEventListener('mousedown', handleClickOutside);
+      // Auto-close after 3 seconds
+      const timer = setTimeout(() => setShowTimestamp(false), 3000);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        clearTimeout(timer);
+      };
+    }
+  }, [showTimestamp]);
+  
+  if (!timestamp) return null;
+  
+  const status = DataFreshness.getStatus(timestamp);
+  const Icon = status.icon;
+  
+  const sizeClasses = size === 'sm' ? 'w-3 h-3 text-xs' : 'w-4 h-4 text-sm';
+  
+  const colorClass = {
+    green: 'text-green-500',
+    yellow: 'text-yellow-500',
+    orange: 'text-orange-500',
+    red: 'text-red-500'
+  }[status.color] || 'text-slate-400';
+  
+  return (
+    <div className="flex items-center gap-1 relative" ref={tooltipRef}>
+      <button
+        onClick={() => setShowTimestamp(!showTimestamp)}
+        className={`${sizeClasses} ${colorClass} hover:scale-110 transition-all duration-200 cursor-pointer rounded-full p-0.5 hover:bg-slate-100`}
+        title={showTimestamp ? "Hide timestamp" : "Show last update time"}
+      >
+        <Icon className={sizeClasses} />
+      </button>
+      {showTimestamp && (
+        <div className="absolute top-6 right-0 z-50 bg-slate-800 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap animate-in fade-in duration-200">
+          <div className="absolute -top-1 right-2 w-2 h-2 bg-slate-800 rotate-45"></div>
+          {DataFreshness.getAge(timestamp)}
+        </div>
+      )}
+    </div>
+  );
+};
+
+
+
+export { Button, Card, WeekSelector , LoadingOverlay};
