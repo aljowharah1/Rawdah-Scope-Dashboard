@@ -1,4 +1,45 @@
-// ============================ 
+import React, { useState, useRef, useEffect } from 'react';
+import { Loader2, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
+
+// ============================
+// Data Freshness Utility
+// ============================
+const DataFreshness = {
+  getAge(timestamp) {
+    const ms = Date.now() - timestamp;
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (seconds < 60) return 'Just now';
+    if (minutes === 1) return '1 minute ago';
+    if (minutes < 60) return `${minutes} minutes ago`;
+    if (hours === 1) return '1 hour ago';
+    if (hours < 24) return `${hours} hours ago`;
+    return 'More than a day ago';
+  },
+
+  getStatus(timestamp) {
+    const minutes = Math.floor((Date.now() - timestamp) / 60000);
+
+    if (minutes < 5) return { level: 'fresh', color: 'green', icon: CheckCircle };
+    if (minutes < 30) return { level: 'recent', color: 'yellow', icon: Clock };
+    if (minutes < 60) return { level: 'stale', color: 'orange', icon: AlertCircle };
+    return { level: 'old', color: 'red', icon: XCircle };
+  },
+
+  getConfidence(timestamp) {
+    const minutes = Math.floor((Date.now() - timestamp) / 60000);
+
+    if (minutes < 5) return 100;
+    if (minutes < 30) return 80;
+    if (minutes < 60) return 60;
+    if (minutes < 120) return 40;
+    return 20;
+  }
+};
+
+// ============================
 // UI Kit Components
 // ============================
 const Button = ({ children, variant = 'primary', size = 'md', className = '', ...props }) => {
@@ -171,4 +212,4 @@ const FreshnessIndicator = ({ timestamp, size = 'sm' }) => {
 
 
 
-export { Button, Card, WeekSelector , LoadingOverlay};
+export { Button, Card, WeekSelector , LoadingOverlay, FreshnessIndicator};

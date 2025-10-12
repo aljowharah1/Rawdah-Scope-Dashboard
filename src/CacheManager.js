@@ -1,7 +1,7 @@
 // ============================
 // Cache Management System
 // ============================
-class CacheManager {
+class cacheManager {
   constructor() {
     this.cache = new Map();
     this.timestamps = new Map();
@@ -66,5 +66,5 @@ class CacheManager {
     return stats;
   }
 }
-// const cacheManager = new CacheManager();
-export {CacheManager};
+const cacheManagerInstance = new cacheManager();
+export { cacheManagerInstance as cacheManager };

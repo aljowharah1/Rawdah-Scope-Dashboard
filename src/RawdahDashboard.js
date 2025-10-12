@@ -5,7 +5,7 @@ import { Send, Thermometer, Wind, MapPin, Wifi, WifiOff, Loader2, AlertCircle, R
 import { Button, Card, WeekSelector, LoadingOverlay, FreshnessIndicator} from './components/Ui.js';
 import { chartDataTranslations, translateChartLabel, getLastValue, prepareChartData,translations} from './Translation.js';
 import { AIChatbotService, RawdahChatbot } from './components/Chatbot.js'
-import{CacheManager} from './CacheManager.js'
+import{cacheManager} from './CacheManager.js'
 // ============================
 // Retry Logic Wrapper
 // ============================
@@ -2311,8 +2311,26 @@ const RawdahDashboard = () => {
   
   // Handle week selection for historical data
   const handleWeekSelection = async (chartType, weekStart) => {
+    // Check if the selected week is the current week
+    const getCurrentWeekStart = () => {
+      const now = new Date();
+      const day = now.getDay();
+      const diff = now.getDate() - day;
+      return new Date(now.setDate(diff)).toISOString().split('T')[0];
+    };
+
+    const currentWeekStart = getCurrentWeekStart();
+    const isCurrentWeek = weekStart === currentWeekStart;
+
+    // If current week is selected, set to null to show live data
+    if (isCurrentWeek) {
+      setSelectedWeeks(prev => ({ ...prev, [chartType]: null }));
+      setHistoricalData(prev => ({ ...prev, [chartType]: null }));
+      return;
+    }
+
     setSelectedWeeks(prev => ({ ...prev, [chartType]: weekStart }));
-    
+
     try {
       let data;
       switch (chartType) {
@@ -2329,7 +2347,7 @@ const RawdahDashboard = () => {
         default:
           return;
       }
-      
+
       setHistoricalData(prev => ({ ...prev, [chartType]: data }));
     } catch (error) {
       console.error(`Error fetching historical data for ${chartType}:`, error);
@@ -2696,21 +2714,22 @@ const RawdahDashboard = () => {
                 
                 <div className="h-80 transition-all duration-300" style={{ direction: language === 'ar' ? 'rtl' : 'ltr' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart 
+                    <LineChart
                       key={`trends-chart-${language}-${selectedMetric}`}
                       data={prepareChartData(dashboardData.comparisonData, language === 'ar', language)}
                       margin={{ left: language === 'ar' ? 5 : 25, right: language === 'ar' ? 25 : 5, top: 5, bottom: 5 }}
                     >
-                      <CartesianGrid 
-                        strokeDasharray="3 3" 
-                        stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={isDarkMode ? "#374151" : "#f1f5f9"}
                       />
-                      <XAxis 
-                        dataKey="month" 
-                        tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                        reversed={language === 'ar'}
                       />
-                      <YAxis 
-                        tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                      <YAxis
+                        tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
                         orientation={language === 'ar' ? 'right' : 'left'}
                       />
                       <Tooltip
@@ -2732,6 +2751,8 @@ const RawdahDashboard = () => {
                         strokeWidth={3}
                         dot={{ r: 4 }}
                         name="Afforested Street"
+                        animationBegin={language === 'ar' ? 0 : 0}
+                        animationDuration={800}
                       />
                       <Line
                         type="monotone"
@@ -2740,6 +2761,8 @@ const RawdahDashboard = () => {
                         strokeWidth={3}
                         dot={{ r: 4 }}
                         name="Non-afforested Street"
+                        animationBegin={language === 'ar' ? 0 : 0}
+                        animationDuration={800}
                       />
                       <Line
                         type="monotone"
@@ -2748,6 +2771,8 @@ const RawdahDashboard = () => {
                         strokeWidth={3}
                         dot={{ r: 4 }}
                         name="Pre-afforestation Street"
+                        animationBegin={language === 'ar' ? 0 : 0}
+                        animationDuration={800}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -2846,16 +2871,17 @@ const RawdahDashboard = () => {
                     return (
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={prepareChartData(connectedData, language === 'ar', language)}>
-                          <CartesianGrid 
-                            strokeDasharray="3 3" 
-                            stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke={isDarkMode ? "#374151" : "#f1f5f9"}
                           />
-                          <XAxis 
-                            dataKey="day" 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          <XAxis
+                            dataKey="day"
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            reversed={language === 'ar'}
                           />
-                          <YAxis 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          <YAxis
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
                             orientation={language === 'ar' ? 'right' : 'left'}
                           />
                           <Tooltip
@@ -2968,12 +2994,13 @@ const RawdahDashboard = () => {
                             strokeDasharray="3 3" 
                             stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
                           />
-                          <XAxis 
-                            dataKey="day" 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          <XAxis
+                            dataKey="day"
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            reversed={language === 'ar'}
                           />
-                          <YAxis 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          <YAxis
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
                             orientation={language === 'ar' ? 'right' : 'left'}
                           />
                           <Tooltip
@@ -3115,12 +3142,13 @@ const RawdahDashboard = () => {
                             strokeDasharray="3 3" 
                             stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
                           />
-                          <XAxis 
-                            dataKey="area" 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          <XAxis
+                            dataKey="area"
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            reversed={language === 'ar'}
                           />
-                          <YAxis 
-                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                          <YAxis
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
                             orientation={language === 'ar' ? 'right' : 'left'}
                           />
                           <Tooltip
@@ -3222,12 +3250,13 @@ const RawdahDashboard = () => {
                           strokeDasharray="3 3" 
                           stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
                         />
-                        <XAxis 
-                          dataKey="pollutant" 
+                        <XAxis
+                          dataKey="pollutant"
                           tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
                           angle={-45}
                           textAnchor="end"
                           height={60}
+                          reversed={language === 'ar'}
                         />
                         <YAxis 
                           tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
@@ -3383,9 +3412,10 @@ const RawdahDashboard = () => {
                         strokeDasharray="3 3" 
                         stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
                       />
-                      <XAxis 
-                        dataKey="day" 
-                        tick={{ fontSize: 9, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                      <XAxis
+                        dataKey="day"
+                        tick={{ fontSize: 9, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                        reversed={language === 'ar'}
                       />
                       <YAxis 
                         tick={{ fontSize: 9, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
@@ -3511,9 +3541,10 @@ const RawdahDashboard = () => {
                         strokeDasharray="3 3" 
                         stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
                       />
-                      <XAxis 
-                        dataKey="year" 
-                        tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
+                      <XAxis
+                        dataKey="year"
+                        tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                        reversed={language === 'ar'}
                       />
                       <YAxis 
                         tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
