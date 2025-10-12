@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { Send, Thermometer, Wind, MapPin, Wifi, WifiOff, Loader2, AlertCircle, RefreshCw, Clock, CheckCircle, XCircle, MessageCircle, X, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { Thermometer, Wind, MapPin, Wifi, WifiOff, Loader2, AlertCircle, RefreshCw, Clock, CheckCircle, XCircle, MessageCircle, X, Globe } from 'lucide-react';
 
 import { Button, Card, WeekSelector, LoadingOverlay, FreshnessIndicator} from './components/Ui.js';
-import { chartDataTranslations, translateChartLabel, getLastValue, prepareChartData,translations} from './Translation.js';
-import { AIChatbotService, RawdahChatbot } from './components/Chatbot.js'
+import { getLastValue, prepareChartData,translations} from './Translation.js';
+import { RawdahChatbot } from './components/Chatbot.js'
 import{cacheManager} from './CacheManager.js'
 // ============================
 // Retry Logic Wrapper
@@ -602,8 +602,7 @@ const DataProcessor = {
     const meanTempsB = weatherNonPlanted?.daily?.temperature_2m_mean ?? [];
     
     const n = Math.min(datesA.length, datesB.length, 14); // Limit to 14 days max
-    
-    const out = [];
+
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const today = new Date();
     const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -2157,7 +2156,6 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh, t 
 // Sensor Map Component with Visual Sensor Pins
 const SensorMap = ({ sensorData, t }) => {
   const [selectedSensor, setSelectedSensor] = useState(null);
-  const [mapContainer, setMapContainer] = useState(null);
   
   const mapBounds = { 
     minLat: 24.69, maxLat: 24.73, 

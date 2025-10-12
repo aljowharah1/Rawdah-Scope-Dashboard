@@ -1,7 +1,7 @@
 // ============================
 // AI Chatbot Service Integration (OpenAI API)
 // ============================
-import { Button, Card } from './Ui.js';
+import { Button } from './Ui.js';
 import React, { useState, useEffect } from 'react';
 import { Send, Wifi } from 'lucide-react';
 import { getLastValue, translations } from '../Translation.js';

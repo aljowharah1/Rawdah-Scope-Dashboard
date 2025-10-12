@@ -236,18 +236,14 @@ const translations = {
     up: 'up',
     down: 'down',
     difference: 'Difference',
-    current: 'Current',
     target: 'Target',
-    
+
     // Loading states
     connectingToAPI: 'Connecting to API',
-    fetchingFromAPI: 'Fetching from API',
     realTimeData: 'Real-time Data',
-    
+
     // UI Labels that were hardcoded
-    temperatureScale: 'Temperature Scale (°C)',
     networkStatusLabel: 'Network Status',
-    sensorNetworkCoverage: 'Sensor Network Coverage',
     realTimeEnvironmentalMonitoring: 'Real-time environmental monitoring network',
     networkStatusPerformance: 'Network status and performance indicators',
     stationID: 'Station ID',
@@ -375,7 +371,6 @@ const translations = {
     realTimeEnvironmental: 'شبكة مراقبة بيئية في الوقت الحقيقي',
 
     // Chart labels
-    current: 'حقيقي',
     forecasted: 'متوقع',
 
     // Sensor table headers
@@ -537,16 +532,11 @@ const translations = {
     co: 'أول أكسيد الكربون',
     
     // Loading states
-    loadingTemperatureData: 'جارٍ تحميل بيانات درجة الحرارة...',
-    loadingDistrictData: 'جارٍ تحميل بيانات الأحياء...',
     connectingToAPI: 'جارٍ الاتصال بواجهة البرمجة',
-    fetchingFromAPI: 'جارٍ الجلب من واجهة البرمجة',
     realTimeData: 'بيانات في الوقت الحقيقي',
-    
+
     // UI Labels that were hardcoded
-    temperatureScale: 'مقياس درجة الحرارة (°م)',
     networkStatusLabel: 'حالة الشبكة',
-    sensorNetworkCoverage: 'تغطية شبكة المستشعرات',
     realTimeEnvironmentalMonitoring: 'شبكة مراقبة بيئية في الوقت الحقيقي',
     networkStatusPerformance: 'حالة الشبكة ومؤشرات الأداء',
     stationID: 'معرّف المحطة',
@@ -556,17 +546,14 @@ const translations = {
     sensorType: 'النوع',
     sensorsCount: 'المستشعرات',
     gatewaysCount: 'البوابات',
-    
+
     // Hardcoded location names
     abuBakrAlRaziAfforested: 'أبو بكر الرازي (مُشجَّر)',
     mohammedAlBishrNonAfforested: 'محمد البشر (غير مُشجَّر)',
     ishaqIbnIbrahimPreAfforestation: 'إسحاق بن إبراهيم (قبل التشجير)',
-    
+
     // Chart and data labels
     weeklyAverage: 'متوسط أسبوعي (°م) - بيانات المستشعر',
-    currentTemp: 'درجة الحرارة الحالية',
-    coverage: 'التغطية',
-    precipitation: 'الهطول',
     mmUnit: 'ملم',
     
     // Status indicators
