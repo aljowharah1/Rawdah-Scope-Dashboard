@@ -3410,7 +3410,6 @@ const RawdahDashboard = () => {
                       <XAxis
                         dataKey="day"
                         tick={{ fontSize: 9, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
-                        reversed={language === 'ar'}
                       />
                       <YAxis 
                         tick={{ fontSize: 9, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
