@@ -3,7 +3,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Thermometer, Wind, MapPin, Wifi, WifiOff, Loader2, AlertCircle, RefreshCw, Clock, CheckCircle, XCircle, MessageCircle, X, Globe } from 'lucide-react';
 
 import { Button, Card, WeekSelector, LoadingOverlay, FreshnessIndicator} from './components/Ui.js';
-import { getLastValue, prepareChartData,translations} from './Translation.js';
+import { getLastValue, prepareChartData, translations} from './Translation.js';
 import { RawdahChatbot } from './components/Chatbot.js'
 import{cacheManager} from './CacheManager.js'
 // ============================
@@ -2724,7 +2724,6 @@ const RawdahDashboard = () => {
                       <XAxis
                         dataKey="month"
                         tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
-                        reversed={language === 'ar'}
                       />
                       <YAxis
                         tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
@@ -2876,7 +2875,6 @@ const RawdahDashboard = () => {
                           <XAxis
                             dataKey="day"
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
-                            reversed={language === 'ar'}
                           />
                           <YAxis
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
@@ -2995,7 +2993,6 @@ const RawdahDashboard = () => {
                           <XAxis
                             dataKey="day"
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
-                            reversed={language === 'ar'}
                           />
                           <YAxis
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
