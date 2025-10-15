@@ -47,45 +47,45 @@ const getLastValue = (data, language = 'en') => {
   return data[data.length - 1];
 };
 
-// Helper function to reverse chart data for RTL languages (Arabic) and translate labels
-// This flips the X-axis data order while Y-axis positioning is handled by orientation prop
+// Helper function to translate chart data labels for RTL languages (Arabic)
+// The XAxis reversed prop handles the RTL layout, so we don't reverse the data array
 const prepareChartData = (data, isArabic = false, language = 'en') => {
   if (!data || !Array.isArray(data)) return data;
-  
+
   // Clone the data to avoid mutation
   let processedData = data.map(item => ({ ...item }));
-  
+
   // Translate labels based on the data structure
   if (language === 'ar') {
     processedData = processedData.map(item => {
       const translatedItem = { ...item };
-      
+
       // Translate day labels (used in CO2, temperature, and surface temp data)
       if (item.day && chartDataTranslations.days.ar[item.day]) {
         translatedItem.day = chartDataTranslations.days.ar[item.day];
       }
-      
+
       // Translate month labels (used in comparison data)
       if (item.month && chartDataTranslations.months.ar[item.month]) {
         translatedItem.month = chartDataTranslations.months.ar[item.month];
       }
-      
+
       // Translate parameter labels (used in air quality data)
       if (item.parameter && chartDataTranslations.parameters.ar[item.parameter]) {
         translatedItem.parameter = chartDataTranslations.parameters.ar[item.parameter];
       }
-      
+
       // Translate area labels (used in ground temperature data)
       if (item.area && chartDataTranslations.areas.ar[item.area]) {
         translatedItem.area = chartDataTranslations.areas.ar[item.area];
       }
-      
+
       return translatedItem;
     });
   }
-  
-  // For Arabic, reverse the array order to flip X-axis from right to left
-  return isArabic ? processedData.reverse() : processedData;
+
+  // Return the data without reversing - the XAxis reversed prop handles RTL layout
+  return processedData;
 };
 
 const translations = {

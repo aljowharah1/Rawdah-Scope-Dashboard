@@ -2724,6 +2724,7 @@ const RawdahDashboard = () => {
                       <XAxis
                         dataKey="month"
                         tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                        reversed={language === 'ar'}
                       />
                       <YAxis
                         tick={{ fontSize: 11, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
@@ -2875,6 +2876,7 @@ const RawdahDashboard = () => {
                           <XAxis
                             dataKey="day"
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            reversed={language === 'ar'}
                           />
                           <YAxis
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
@@ -2986,13 +2988,14 @@ const RawdahDashboard = () => {
                     return (
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={prepareChartData(connectedData, language === 'ar', language)}>
-                          <CartesianGrid 
-                            strokeDasharray="3 3" 
-                            stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke={isDarkMode ? "#374151" : "#f1f5f9"}
                           />
                           <XAxis
                             dataKey="day"
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            reversed={language === 'ar'}
                           />
                           <YAxis
                             tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
@@ -3403,13 +3406,14 @@ const RawdahDashboard = () => {
                         };
                       });
                     })(), language === 'ar', language)}>
-                      <CartesianGrid 
-                        strokeDasharray="3 3" 
-                        stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke={isDarkMode ? "#374151" : "#f1f5f9"}
                       />
                       <XAxis
                         dataKey="day"
                         tick={{ fontSize: 9, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                        reversed={language === 'ar'}
                       />
                       <YAxis 
                         tick={{ fontSize: 9, fill: isDarkMode ? "#9ca3af" : "#64748b" }} 
