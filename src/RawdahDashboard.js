@@ -436,33 +436,36 @@ const ApiService = {
 // ============================
 const DataProcessor = {
   async processWeatherForHeatMap() {
-    // EXPANDED TO 20 DISTRICTS FOR BETTER AREA SEGMENTATION
+    // EXPANDED TO 21 DISTRICTS INCLUDING PRINCE SULTAN UNIVERSITY
     const districts = [
+      // Prince Sultan University (Primary monitoring site)
+      { name: 'Prince Sultan University', lat: 24.73605, lng: 46.70095 },
+
       // Central Riyadh Districts
       { name: 'King Fahd District', lat: 24.7136, lng: 46.6753 },
       { name: 'Al-Malaz', lat: 24.6877, lng: 46.7219 },
       { name: 'Al-Olaya', lat: 24.6951, lng: 46.6693 },
       { name: 'Al-Batha', lat: 24.6300, lng: 46.7100 },
       { name: 'Al-Dirah', lat: 24.6280, lng: 46.7150 },
-      
+
       // Northern Districts
       { name: 'Al-Naseem', lat: 24.7730, lng: 46.6977 },
       { name: 'Northern District', lat: 24.7500, lng: 46.7200 },
       { name: 'Qurtubah', lat: 24.8000, lng: 46.7700 },
       { name: 'Al-Aziziyah', lat: 24.7850, lng: 46.6800 },
       { name: 'Al-Khalij', lat: 24.7650, lng: 46.7050 },
-      
+
       // Southern Districts
       { name: 'Industrial Area', lat: 24.6200, lng: 46.7500 },
       { name: 'Al-Ghadeer', lat: 24.6100, lng: 46.6400 },
       { name: 'Al-Shifa', lat: 24.5600, lng: 46.7200 },
       { name: 'Al-Faysaliah', lat: 24.6050, lng: 46.6850 },
-      
+
       // Western Districts
       { name: 'Diriyah', lat: 24.7370, lng: 46.5750 },
       { name: 'Al-Irqah', lat: 24.7200, lng: 46.6200 },
       { name: 'Al-Suwaidi', lat: 24.6800, lng: 46.6350 },
-      
+
       // Eastern Districts
       { name: 'Al-Rawdah', lat: 24.7300, lng: 46.7850 },
       { name: 'Al-Rabi', lat: 24.7150, lng: 46.7650 },
@@ -1436,21 +1439,22 @@ const useEnvironmentalData = () => {
     }
   };
   
-  // ENHANCED: Fetch surface temp with specified areas and daily data
+  // ENHANCED: Fetch surface temp - Prince Sultan University and comparison areas
   const fetchSurfaceTemp = async () => {
     setLoadingStates(prev => ({ ...prev, surfaceTemp: true }));
     try {
-      // Al-Malaz is afforested, Industrial Area is non-planted
-      const afforested = { lat: 24.6877, lng: 46.7219, name: 'Al-Malaz (Afforested)' };
-      const nonPlanted = { lat: 24.6200, lng: 46.7500, name: 'Industrial Area' };
-      
+      // Prince Sultan University (PSU) center coordinates for primary monitoring
+      // Using Al-Malaz (afforested) as baseline comparison
+      const afforested = { lat: 24.73605, lng: 46.70095, name: 'Prince Sultan University (Afforested)' };
+      const nonPlanted = { lat: 24.6200, lng: 46.7500, name: 'Industrial Area (Non-afforested)' };
+
       const [weatherAff, weatherNon] = await Promise.all([
         ApiService.fetchWeatherData(afforested.lat, afforested.lng),
         ApiService.fetchWeatherData(nonPlanted.lat, nonPlanted.lng)
       ]);
-      
+
       const surfaceTempData = DataProcessor.processSurfaceTemperaturePair(weatherAff, weatherNon);
-      
+
       setDashboardData(prev => ({ ...prev, surfaceTempData }));
       setDataTimestamps(prev => ({ ...prev, surfaceTemp: Date.now() }));
       setApiStatus(prev => ({ ...prev, surfaceTemp: 'success' }));
@@ -1478,19 +1482,19 @@ const useEnvironmentalData = () => {
       
       const parameters = ['pm25', 'pm10', 'no2', 'o3', 'so2', 'co'];
       
-      // Try to fetch real data with more aggressive parameters
+      // Try to fetch real data with more aggressive parameters - PSU coordinates
       const [aqNow, aqPrev] = await Promise.all([
         ApiService.fetchAirQualityWindow({
-          lat: 24.7136,
-          lng: 46.6753,
+          lat: 24.73605, // Prince Sultan University
+          lng: 46.70095,
           radius: 500000, // 500km radius
           date_from: iso(weekAgo),
           date_to: iso(now),
           parameters
         }),
         ApiService.fetchAirQualityWindow({
-          lat: 24.7136,
-          lng: 46.6753,
+          lat: 24.73605, // Prince Sultan University
+          lng: 46.70095,
           radius: 500000,
           date_from: iso(twoWeeksAgo),
           date_to: iso(weekAgo),
@@ -1542,18 +1546,18 @@ const useEnvironmentalData = () => {
   const fetchNDVI = async () => {
     setLoadingStates(prev => ({ ...prev, ndvi: true }));
     try {
-      // Riyadh city center coordinates for accurate satellite NDVI calculation
-      const riyadhCoordinates = {
-        lat: 24.7136, // Riyadh city center latitude
-        lng: 46.6753  // Riyadh city center longitude
+      // Prince Sultan University coordinates for accurate satellite NDVI calculation
+      const psuCoordinates = {
+        lat: 24.73605, // Prince Sultan University latitude
+        lng: 46.70095  // Prince Sultan University longitude
       };
-      
-      console.log(`Fetching real satellite NDVI data for Riyadh (${riyadhCoordinates.lat}, ${riyadhCoordinates.lng})`);
+
+      console.log(`Fetching real satellite NDVI data for PSU (${psuCoordinates.lat}, ${psuCoordinates.lng})`);
       
       // Try to fetch real satellite NDVI data
       const biodiversityData = await DataProcessor.processRealNDVIData(
-        riyadhCoordinates.lat, 
-        riyadhCoordinates.lng, 
+        psuCoordinates.lat,
+        psuCoordinates.lng,
         6
       );
       
@@ -1561,23 +1565,24 @@ const useEnvironmentalData = () => {
         throw new Error('No satellite NDVI data available');
       }
       
-      // Add Riyadh-specific metadata (no species counts - removed as requested)
+      // Add Prince Sultan University metadata (no species counts - removed as requested)
       const enhancedBiodiversityData = biodiversityData.map(item => ({
         ...item,
         city: 'Riyadh',
         country: 'Saudi Arabia',
+        location: 'Prince Sultan University',
         climateZone: 'BWh (Hot Desert Climate)',
         afforestationProgram: 'Saudi Green Initiative',
-        coordinates: riyadhCoordinates
+        coordinates: psuCoordinates
       }));
       
       setDashboardData(prev => ({ ...prev, biodiversityData: enhancedBiodiversityData }));
       setDataTimestamps(prev => ({ ...prev, ndvi: Date.now() }));
       setApiStatus(prev => ({ ...prev, ndvi: 'success' }));
       
-      console.log('Real satellite NDVI data fetched for Riyadh:', enhancedBiodiversityData);
+      console.log('Real satellite NDVI data fetched for PSU:', enhancedBiodiversityData);
     } catch (error) {
-      console.error('Satellite NDVI fetch error for Riyadh:', error);
+      console.error('Satellite NDVI fetch error for PSU:', error);
       
       // Try climate-based fallback estimation
       try {
@@ -2175,10 +2180,10 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh, t 
 const SensorMap = ({ sensorData, t }) => {
   const [selectedSensor, setSelectedSensor] = useState(null);
   
-  // Prince Sultan University Campus Bounding Box
+  // Prince Sultan University Campus Bounding Box (zoomed out to show full campus)
   const mapBounds = {
-    minLat: 24.73400, maxLat: 24.73810,
-    minLng: 46.69770, maxLng: 46.70420
+    minLat: 24.73200, maxLat: 24.74000,
+    minLng: 46.69600, maxLng: 46.70600
   };
   
   // Convert lat/lng to percentage-based positioning for zoom stability
@@ -2225,7 +2230,7 @@ const SensorMap = ({ sensorData, t }) => {
       <div className="w-full h-full relative bg-slate-100">
         {/* Base Map - Prince Sultan University Campus */}
         <iframe
-          src="https://www.openstreetmap.org/export/embed.html?bbox=46.69770,24.73400,46.70420,24.73810&layer=mapnik"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=46.69600,24.73200,46.70600,24.74000&layer=mapnik"
           className="w-full h-full border-0"
           style={{ filter: 'opacity(0.8)' }}
           title="Prince Sultan University Sensor Network"
@@ -3221,13 +3226,13 @@ const RawdahDashboard = () => {
                       const weeklyAverage = chartData.reduce((sum, item) => sum + (item.planted || item.nonPlanted || 35), 0) / chartData.length;
 
                       filteredData = [
+                        { area: 'Prince Sultan University', temperature: Math.round(weeklyAverage) }, // PSU campus
                         { area: 'Al-Malaz', temperature: Math.round(weeklyAverage - 8) }, // Afforested area (cooler)
-                        { area: 'Industrial Area', temperature: Math.round(weeklyAverage + 5) }, // Industrial area (hotter)
-                        { area: 'Al-Ghadeer', temperature: Math.round(weeklyAverage) } // Mixed area
+                        { area: 'Industrial Area', temperature: Math.round(weeklyAverage + 5) } // Industrial area (hotter)
                       ];
                     } else {
-                      // Use current heat map data - ensure exactly 3 districts
-                      const targetDistricts = ['Al-Malaz', 'Industrial Area', 'Al-Ghadeer'];
+                      // Use current heat map data - prioritize PSU and comparison districts
+                      const targetDistricts = ['Prince Sultan University', 'Al-Malaz', 'Industrial Area'];
                       filteredData = [];
 
                       targetDistricts.forEach(districtName => {
