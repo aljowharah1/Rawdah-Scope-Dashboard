@@ -257,9 +257,9 @@ const translations = {
     gatewaysCount: 'Gateways',
     
     // Hardcoded location names
-    abuBakrAlRaziAfforested: 'Abu Bakr Al-Razi (Afforested)',
-    mohammedAlBishrNonAfforested: 'Mohammed Al-Bishr (Non-afforested)',
-    ishaqIbnIbrahimPreAfforestation: 'Ishaq Ibn Ibrahim (Pre-afforestation)',
+    abuBakrAlRaziAfforested: 'Afforested',
+    mohammedAlBishrNonAfforested: 'Non-afforested',
+    ishaqIbnIbrahimPreAfforestation: 'Pre-afforestation',
     
     // Chart and data labels
     weeklyAverage: 'Weekly average (°C) - Sensor Data',
@@ -552,9 +552,9 @@ const translations = {
     gatewaysCount: 'البوابات',
 
     // Hardcoded location names
-    abuBakrAlRaziAfforested: 'أبو بكر الرازي (مُشجَّر)',
-    mohammedAlBishrNonAfforested: 'محمد البشر (غير مُشجَّر)',
-    ishaqIbnIbrahimPreAfforestation: 'إسحاق بن إبراهيم (قبل التشجير)',
+    abuBakrAlRaziAfforested: 'مُشجَّر',
+    mohammedAlBishrNonAfforested: 'غير مُشجَّر',
+    ishaqIbnIbrahimPreAfforestation: 'قبل التشجير',
 
     // Chart and data labels
     weeklyAverage: 'متوسط أسبوعي (°م) - بيانات المستشعر',

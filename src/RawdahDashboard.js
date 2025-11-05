@@ -1327,17 +1327,17 @@ const generateComparisonData = () => {
     return {
       month,
       // CO2 levels (ppm)
-      'Abu Bakr Al-Razi CO₂': Math.max(350, afforestedCO2),
-      'Mohammed Al-Bishr CO₂': nonAfforestedCO2,
-      'Ishaq Ibn Ibrahim CO₂': preAfforestationCO2,
+      'Afforested CO₂': Math.max(350, afforestedCO2),
+      'Non-afforested CO₂': nonAfforestedCO2,
+      'Pre-afforestation CO₂': preAfforestationCO2,
       // Surface temperatures (°C)
-      'Abu Bakr Al-Razi Surface': Math.max(20, afforestedSurface),
-      'Mohammed Al-Bishr Surface': nonAfforestedSurface,
-      'Ishaq Ibn Ibrahim Surface': preAfforestationSurface,
+      'Afforested Surface': Math.max(20, afforestedSurface),
+      'Non-afforested Surface': nonAfforestedSurface,
+      'Pre-afforestation Surface': preAfforestationSurface,
       // Air temperatures (°C)
-      'Abu Bakr Al-Razi Air': Math.max(15, afforestedAir),
-      'Mohammed Al-Bishr Air': nonAfforestedAir,
-      'Ishaq Ibn Ibrahim Air': preAfforestationAir,
+      'Afforested Air': Math.max(15, afforestedAir),
+      'Non-afforested Air': nonAfforestedAir,
+      'Pre-afforestation Air': preAfforestationAir,
       // Additional metadata
       season: i < 3 || i > 10 ? 'Winter' : i < 6 ? 'Spring' : i < 9 ? 'Summer' : 'Autumn',
       co2Reduction: Math.round(nonAfforestedCO2 - afforestedCO2),
@@ -2252,13 +2252,13 @@ const SensorMap = ({ sensorData, t }) => {
         {/* Street Labels */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-16 left-8 bg-blue-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-blue-800">
-            Abu Bakr Al-Razi (Afforested)
+            Afforested
           </div>
           <div className="absolute top-32 right-8 bg-orange-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-orange-800">
-            Mohammed Al-Bishr (Non-afforested)
+            Non-afforested
           </div>
           <div className="absolute bottom-20 left-12 bg-purple-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-purple-800">
-            Ishaq Ibn Ibrahim (Pre-afforestation)
+            Pre-afforestation
           </div>
         </div>
       </div>
@@ -2744,31 +2744,31 @@ const RawdahDashboard = () => {
                       />
                       <Line
                         type="monotone"
-                        dataKey={`Abu Bakr Al-Razi ${selectedMetric}`}
+                        dataKey={`Afforested ${selectedMetric}`}
                         stroke="#22c55e"
                         strokeWidth={3}
                         dot={{ r: 4 }}
-                        name="Afforested Street"
+                        name="Afforested"
                         animationBegin={language === 'ar' ? 0 : 0}
                         animationDuration={800}
                       />
                       <Line
                         type="monotone"
-                        dataKey={`Mohammed Al-Bishr ${selectedMetric}`}
+                        dataKey={`Non-afforested ${selectedMetric}`}
                         stroke="#ef4444"
                         strokeWidth={3}
                         dot={{ r: 4 }}
-                        name="Non-afforested Street"
+                        name="Non-afforested"
                         animationBegin={language === 'ar' ? 0 : 0}
                         animationDuration={800}
                       />
                       <Line
                         type="monotone"
-                        dataKey={`Ishaq Ibn Ibrahim ${selectedMetric}`}
+                        dataKey={`Pre-afforestation ${selectedMetric}`}
                         stroke="#f59e0b"
                         strokeWidth={3}
                         dot={{ r: 4 }}
-                        name="Pre-afforestation Street"
+                        name="Pre-afforestation"
                         animationBegin={language === 'ar' ? 0 : 0}
                         animationDuration={800}
                       />
