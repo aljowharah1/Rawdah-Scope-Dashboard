@@ -1236,18 +1236,36 @@ const generateTemperatureData = () => {
 const generateSensorData = () => {
   const now = new Date();
   
-  // Generate realistic sensor data with dynamic battery levels and update times
-  // One node per street acts as both node and gateway, with fake coordinates for demonstration
+  // Prince Sultan University Sensor Nodes (3 nodes for deployment)
+  // Coordinates within PSU campus: North: 24.73810, South: 24.73400, East: 46.70420, West: 46.69770
   const sensors = [
-    { id: 'ABR-N001', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7136, lng: 46.6753 } },
-    { id: 'ABR-N002', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7146, lng: 46.6763 } },
-    { id: 'ABR-N003', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7156, lng: 46.6773 } },
-    { id: 'MAB-N001', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7236, lng: 46.6653 } },
-    { id: 'MAB-N002', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7246, lng: 46.6663 } },
-    { id: 'MAB-N003', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7256, lng: 46.6673 } },
-    { id: 'III-N001', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7036, lng: 46.6853 } },
-    { id: 'III-N002', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7046, lng: 46.6863 } },
-    { id: 'III-N003', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7056, lng: 46.6873 } }
+    {
+      id: 'PSU-N001',
+      streetName: 'PSU Campus - North Zone',
+      district: 'Prince Sultan University',
+      afforestationStatus: 'Afforested',
+      stationType: 'Node/Gateway',
+      sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway',
+      coordinates: { lat: 24.73700, lng: 46.70100 }
+    },
+    {
+      id: 'PSU-N002',
+      streetName: 'PSU Campus - Central Zone',
+      district: 'Prince Sultan University',
+      afforestationStatus: 'Non-afforested',
+      stationType: 'Node',
+      sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30',
+      coordinates: { lat: 24.73600, lng: 46.70000 }
+    },
+    {
+      id: 'PSU-N003',
+      streetName: 'PSU Campus - South Zone',
+      district: 'Prince Sultan University',
+      afforestationStatus: 'Pre-afforestation',
+      stationType: 'Node',
+      sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30',
+      coordinates: { lat: 24.73500, lng: 46.70200 }
+    }
   ];
   
   return sensors.map((sensor, index) => {
@@ -2157,9 +2175,10 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh, t 
 const SensorMap = ({ sensorData, t }) => {
   const [selectedSensor, setSelectedSensor] = useState(null);
   
-  const mapBounds = { 
-    minLat: 24.69, maxLat: 24.73, 
-    minLng: 46.65, maxLng: 46.70 
+  // Prince Sultan University Campus Bounding Box
+  const mapBounds = {
+    minLat: 24.73400, maxLat: 24.73810,
+    minLng: 46.69770, maxLng: 46.70420
   };
   
   // Convert lat/lng to percentage-based positioning for zoom stability
@@ -2204,12 +2223,12 @@ const SensorMap = ({ sensorData, t }) => {
       </div>
       
       <div className="w-full h-full relative bg-slate-100">
-        {/* Base Map */}
+        {/* Base Map - Prince Sultan University Campus */}
         <iframe
-          src="https://www.openstreetmap.org/export/embed.html?bbox=46.65,24.69,46.70,24.73&layer=mapnik"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=46.69770,24.73400,46.70420,24.73810&layer=mapnik"
           className="w-full h-full border-0"
           style={{ filter: 'opacity(0.8)' }}
-          title="Sensor Network Map"
+          title="Prince Sultan University Sensor Network"
         />
         
         {/* Sensor Pins Overlay - Percentage-based positioning for zoom stability */}
@@ -2249,16 +2268,22 @@ const SensorMap = ({ sensorData, t }) => {
           })}
         </div>
         
-        {/* Street Labels */}
+        {/* Campus Zone Labels */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-16 left-8 bg-blue-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-blue-800">
-            Afforested
-          </div>
-          <div className="absolute top-32 right-8 bg-orange-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-orange-800">
-            Non-afforested
-          </div>
-          <div className="absolute bottom-20 left-12 bg-purple-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-purple-800">
-            Pre-afforestation
+          <div className="absolute top-4 right-4 bg-white bg-opacity-95 px-3 py-2 rounded-lg shadow-md text-xs">
+            <div className="font-semibold text-slate-800 mb-1">Prince Sultan University</div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-slate-600">North Zone (Afforested)</span>
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-slate-600">Central Zone (Non-afforested)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              <span className="text-slate-600">South Zone (Pre-afforestation)</span>
+            </div>
           </div>
         </div>
       </div>
