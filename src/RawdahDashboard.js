@@ -3071,6 +3071,103 @@ const RawdahDashboard = () => {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                          {t.surfaceHeatTrend}
+                        </h3>
+                      </div>
+                      <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {t.surfaceHeatTrendDesc}
+                      </p>
+                    </div>
+                    <WeekSelector
+                      selectedWeek={selectedWeeks.surfaceHeat}
+                      onWeekChange={(week) => handleWeekSelection('surfaceHeat', week)}
+                      isDarkMode={isDarkMode}
+                      className="ml-4"
+                    />
+                  </div>
+                </div>
+                <div className="h-64">
+                  {(() => {
+                    // Get chart data (historical or current)
+                    const chartInfo = getChartData('surfaceHeat', dashboardData.surfaceTempData || []);
+                    const { data: chartData, isHistorical } = chartInfo;
+
+                    // Process data for weekly daily averages
+                    if (chartData.length === 0) {
+                      return (
+                        <div className="h-full flex items-center justify-center">
+                          <div className="text-center">
+                            <AlertCircle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                            <p className="text-sm text-slate-500">{t.loadingSurfaceHeatData || 'Loading surface heat data...'}</p>
+                            <p className="text-xs text-slate-400 mt-1">{t.fetchingFromWeatherApi}</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Calculate daily average from afforested and non-afforested areas
+                    const trendData = chartData.map(item => ({
+                      day: item.day,
+                      date: item.date,
+                      temperature: ((item.planted || 0) + (item.nonPlanted || 0)) / 2,
+                      isFuture: item.isFuture
+                    }));
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={prepareChartData(trendData, language === 'ar', language)}>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke={isDarkMode ? "#374151" : "#f1f5f9"}
+                          />
+                          <XAxis
+                            dataKey="day"
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            reversed={language === 'ar'}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            orientation={language === 'ar' ? 'right' : 'left'}
+                            domain={['dataMin - 2', 'dataMax + 2']}
+                          />
+                          <Tooltip
+                            formatter={(value, name) => [
+                              `${value.toFixed(1)}°C`,
+                              name === 'temperature' ? t.surfaceHeat : name
+                            ]}
+                            labelFormatter={(label) => `${label}`}
+                            contentStyle={{
+                              backgroundColor: isDarkMode ? "#374151" : "#ffffff",
+                              border: isDarkMode ? "1px solid #4b5563" : "1px solid #e2e8f0",
+                              color: isDarkMode ? "#f3f4f6" : "#1e293b"
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="temperature"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            dot={{ fill: '#ef4444', r: 3 }}
+                            activeDot={{ r: 5 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+                </div>
+              </Card>
+            </div>
+            
+            {/* Real-Time Environmental Metrics with Individual Loading States */}
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              
+              {/* Surface Heat by District - Moved from previous location */}
+              <Card isDarkMode={isDarkMode}>
+                <div className="mb-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                           {t.surfaceHeatByDistrict}
                         </h3>
                       </div>
@@ -3091,13 +3188,13 @@ const RawdahDashboard = () => {
                     // Get chart data (historical or current)
                     const chartInfo = getChartData('surfaceHeat', dashboardData.surfaceTempData || []);
                     const { data: chartData, isHistorical } = chartInfo;
-                    
+
                     let filteredData;
                     if (isHistorical && chartData.length > 0) {
                       // For historical data, create proper district data structure
                       // Average the weekly data for each district
                       const weeklyAverage = chartData.reduce((sum, item) => sum + (item.planted || item.nonPlanted || 35), 0) / chartData.length;
-                      
+
                       filteredData = [
                         { area: 'Al-Malaz', temperature: Math.round(weeklyAverage - 8) }, // Afforested area (cooler)
                         { area: 'Industrial Area', temperature: Math.round(weeklyAverage + 5) }, // Industrial area (hotter)
@@ -3107,20 +3204,20 @@ const RawdahDashboard = () => {
                       // Use current heat map data - ensure exactly 3 districts
                       const targetDistricts = ['Al-Malaz', 'Industrial Area', 'Al-Ghadeer'];
                       filteredData = [];
-                      
+
                       targetDistricts.forEach(districtName => {
                         const district = dashboardData.heatMapData.find(d => d.area === districtName);
                         if (district) {
                           filteredData.push(district);
                         }
                       });
-                      
+
                       // If we don't have all 3 districts, fall back to first 3 available
                       if (filteredData.length < 3 && dashboardData.heatMapData.length >= 3) {
                         filteredData = dashboardData.heatMapData.slice(0, 3);
                       }
                     }
-                    
+
                     if (filteredData.length === 0) {
                       return (
                         <div className="h-full flex items-center justify-center">
@@ -3132,13 +3229,13 @@ const RawdahDashboard = () => {
                         </div>
                       );
                     }
-                    
+
                     return (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={prepareChartData(filteredData, language === 'ar', language)}>
-                          <CartesianGrid 
-                            strokeDasharray="3 3" 
-                            stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke={isDarkMode ? "#374151" : "#f1f5f9"}
                           />
                           <XAxis
                             dataKey="area"
@@ -3160,48 +3257,15 @@ const RawdahDashboard = () => {
                               color: isDarkMode ? "#f3f4f6" : "#1e293b"
                             }}
                           />
-                          <Bar 
-                            dataKey="temperature" 
-                            fill="#ef4444" 
-                            radius={[4, 4, 0, 0]} 
+                          <Bar
+                            dataKey="temperature"
+                            fill="#ef4444"
+                            radius={[4, 4, 0, 0]}
                           />
                         </BarChart>
                       </ResponsiveContainer>
                     );
                   })()}
-                </div>
-              </Card>
-            </div>
-            
-            {/* Real-Time Environmental Metrics with Individual Loading States */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              
-              {/* Placeholder Card - Chart to be added later */}
-              <Card isDarkMode={isDarkMode} className="relative">
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                      {language === 'ar' ? 'مخطط جديد (قيد التطوير)' : 'New Chart (Coming Soon)'}
-                    </h3>
-                  </div>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {language === 'ar' ? 'سيتم إضافة مخطط جديد في هذا المكان قريباً' : 'A new chart will be added here soon'}
-                  </p>
-                </div>
-                
-                <div className="h-64 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className={`w-16 h-16 mx-auto mb-4 rounded-full border-4 border-dashed ${
-                      isDarkMode ? 'border-slate-600' : 'border-slate-300'
-                    } flex items-center justify-center`}>
-                      <div className={`w-8 h-8 rounded-full ${
-                        isDarkMode ? 'bg-slate-600' : 'bg-slate-300'
-                      }`}></div>
-                    </div>
-                    <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {language === 'ar' ? 'مساحة محجوزة للمخطط الجديد' : 'Chart placeholder'}
-                    </p>
-                  </div>
                 </div>
               </Card>
 
