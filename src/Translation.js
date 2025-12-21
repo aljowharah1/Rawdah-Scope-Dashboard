@@ -128,6 +128,8 @@ const translations = {
     tempTrendDesc: 'Weekly average (°C) - Sensor Data',
     surfaceHeatByDistrict: 'Surface Heat by District',
     surfaceHeatDesc: 'Ground temperature (°C) - Sensor Data',
+    surfaceHeatTrend: 'Surface Heat Trend',
+    surfaceHeatTrendDesc: 'Weekly temperature trend - Daily average sensor readings (°C)',
     airQualityComparison: 'Air Quality: Before vs After Afforestation',
     airQualityDesc: 'OpenAQ real-time measurements (μg/m³)',
     treeCoverLoss: 'Forest Area Coverage',
@@ -255,9 +257,9 @@ const translations = {
     gatewaysCount: 'Gateways',
     
     // Hardcoded location names
-    abuBakrAlRaziAfforested: 'Abu Bakr Al-Razi (Afforested)',
-    mohammedAlBishrNonAfforested: 'Mohammed Al-Bishr (Non-afforested)',
-    ishaqIbnIbrahimPreAfforestation: 'Ishaq Ibn Ibrahim (Pre-afforestation)',
+    abuBakrAlRaziAfforested: 'Afforested',
+    mohammedAlBishrNonAfforested: 'Non-afforested',
+    ishaqIbnIbrahimPreAfforestation: 'Pre-afforestation',
     
     // Chart and data labels
     weeklyAverage: 'Weekly average (°C) - Sensor Data',
@@ -339,6 +341,8 @@ const translations = {
     tempTrendDesc: 'متوسط أسبوعي (°م) - بيانات المستشعر',
     surfaceHeatByDistrict: 'حرارة السطح حسب الحي',
     surfaceHeatDesc: 'درجة حرارة الأرض (°م) - بيانات المستشعر',
+    surfaceHeatTrend: 'اتجاه حرارة السطح',
+    surfaceHeatTrendDesc: 'اتجاه درجة الحرارة الأسبوعي - متوسط قراءات المستشعر اليومية (°م)',
     airQualityComparison: 'جودة الهواء: قبل التشجير وبعده',
     airQualityDesc: 'قياسات OpenAQ في الوقت الحقيقي (ميكروغرام/م³)',
     treeCoverLoss: 'تغطية المساحة الحرجية',
@@ -548,9 +552,9 @@ const translations = {
     gatewaysCount: 'البوابات',
 
     // Hardcoded location names
-    abuBakrAlRaziAfforested: 'أبو بكر الرازي (مُشجَّر)',
-    mohammedAlBishrNonAfforested: 'محمد البشر (غير مُشجَّر)',
-    ishaqIbnIbrahimPreAfforestation: 'إسحاق بن إبراهيم (قبل التشجير)',
+    abuBakrAlRaziAfforested: 'مُشجَّر',
+    mohammedAlBishrNonAfforested: 'غير مُشجَّر',
+    ishaqIbnIbrahimPreAfforestation: 'قبل التشجير',
 
     // Chart and data labels
     weeklyAverage: 'متوسط أسبوعي (°م) - بيانات المستشعر',

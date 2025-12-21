@@ -436,33 +436,36 @@ const ApiService = {
 // ============================
 const DataProcessor = {
   async processWeatherForHeatMap() {
-    // EXPANDED TO 20 DISTRICTS FOR BETTER AREA SEGMENTATION
+    // EXPANDED TO 21 DISTRICTS INCLUDING PRINCE SULTAN UNIVERSITY
     const districts = [
+      // Prince Sultan University (Primary monitoring site)
+      { name: 'Prince Sultan University', lat: 24.73605, lng: 46.70095 },
+
       // Central Riyadh Districts
       { name: 'King Fahd District', lat: 24.7136, lng: 46.6753 },
       { name: 'Al-Malaz', lat: 24.6877, lng: 46.7219 },
       { name: 'Al-Olaya', lat: 24.6951, lng: 46.6693 },
       { name: 'Al-Batha', lat: 24.6300, lng: 46.7100 },
       { name: 'Al-Dirah', lat: 24.6280, lng: 46.7150 },
-      
+
       // Northern Districts
       { name: 'Al-Naseem', lat: 24.7730, lng: 46.6977 },
       { name: 'Northern District', lat: 24.7500, lng: 46.7200 },
       { name: 'Qurtubah', lat: 24.8000, lng: 46.7700 },
       { name: 'Al-Aziziyah', lat: 24.7850, lng: 46.6800 },
       { name: 'Al-Khalij', lat: 24.7650, lng: 46.7050 },
-      
+
       // Southern Districts
       { name: 'Industrial Area', lat: 24.6200, lng: 46.7500 },
       { name: 'Al-Ghadeer', lat: 24.6100, lng: 46.6400 },
       { name: 'Al-Shifa', lat: 24.5600, lng: 46.7200 },
       { name: 'Al-Faysaliah', lat: 24.6050, lng: 46.6850 },
-      
+
       // Western Districts
       { name: 'Diriyah', lat: 24.7370, lng: 46.5750 },
       { name: 'Al-Irqah', lat: 24.7200, lng: 46.6200 },
       { name: 'Al-Suwaidi', lat: 24.6800, lng: 46.6350 },
-      
+
       // Eastern Districts
       { name: 'Al-Rawdah', lat: 24.7300, lng: 46.7850 },
       { name: 'Al-Rabi', lat: 24.7150, lng: 46.7650 },
@@ -1236,18 +1239,36 @@ const generateTemperatureData = () => {
 const generateSensorData = () => {
   const now = new Date();
   
-  // Generate realistic sensor data with dynamic battery levels and update times
-  // One node per street acts as both node and gateway, with fake coordinates for demonstration
+  // Prince Sultan University Sensor Nodes (3 nodes for deployment)
+  // Coordinates within PSU campus: North: 24.73810, South: 24.73400, East: 46.70420, West: 46.69770
   const sensors = [
-    { id: 'ABR-N001', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7136, lng: 46.6753 } },
-    { id: 'ABR-N002', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7146, lng: 46.6763 } },
-    { id: 'ABR-N003', streetName: 'Abu Bakr Al-Razi', district: 'Al-Malaz', afforestationStatus: 'Afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7156, lng: 46.6773 } },
-    { id: 'MAB-N001', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7236, lng: 46.6653 } },
-    { id: 'MAB-N002', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7246, lng: 46.6663 } },
-    { id: 'MAB-N003', streetName: 'Mohammed Al-Bishr', district: 'Al-Olaya', afforestationStatus: 'Non-afforested', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7256, lng: 46.6673 } },
-    { id: 'III-N001', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node/Gateway', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway', coordinates: { lat: 24.7036, lng: 46.6853 } },
-    { id: 'III-N002', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7046, lng: 46.6863 } },
-    { id: 'III-N003', streetName: 'Ishaq Ibn Ibrahim', district: 'King Fahd', afforestationStatus: 'Pre-afforestation', stationType: 'Node', sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30', coordinates: { lat: 24.7056, lng: 46.6873 } }
+    {
+      id: 'PSU-N001',
+      streetName: 'PSU Campus - North Zone',
+      district: 'Prince Sultan University',
+      afforestationStatus: 'Afforested',
+      stationType: 'Node/Gateway',
+      sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30 + LoRaWAN Gateway',
+      coordinates: { lat: 24.73700, lng: 46.70100 }
+    },
+    {
+      id: 'PSU-N002',
+      streetName: 'PSU Campus - Central Zone',
+      district: 'Prince Sultan University',
+      afforestationStatus: 'Non-afforested',
+      stationType: 'Node',
+      sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30',
+      coordinates: { lat: 24.73600, lng: 46.70000 }
+    },
+    {
+      id: 'PSU-N003',
+      streetName: 'PSU Campus - South Zone',
+      district: 'Prince Sultan University',
+      afforestationStatus: 'Pre-afforestation',
+      stationType: 'Node',
+      sensorTypes: 'MH-Z19B, MLX90614, DS18B20, SHT30',
+      coordinates: { lat: 24.73500, lng: 46.70200 }
+    }
   ];
   
   return sensors.map((sensor, index) => {
@@ -1327,17 +1348,17 @@ const generateComparisonData = () => {
     return {
       month,
       // CO2 levels (ppm)
-      'Abu Bakr Al-Razi CO₂': Math.max(350, afforestedCO2),
-      'Mohammed Al-Bishr CO₂': nonAfforestedCO2,
-      'Ishaq Ibn Ibrahim CO₂': preAfforestationCO2,
+      'Afforested CO₂': Math.max(350, afforestedCO2),
+      'Non-afforested CO₂': nonAfforestedCO2,
+      'Pre-afforestation CO₂': preAfforestationCO2,
       // Surface temperatures (°C)
-      'Abu Bakr Al-Razi Surface': Math.max(20, afforestedSurface),
-      'Mohammed Al-Bishr Surface': nonAfforestedSurface,
-      'Ishaq Ibn Ibrahim Surface': preAfforestationSurface,
+      'Afforested Surface': Math.max(20, afforestedSurface),
+      'Non-afforested Surface': nonAfforestedSurface,
+      'Pre-afforestation Surface': preAfforestationSurface,
       // Air temperatures (°C)
-      'Abu Bakr Al-Razi Air': Math.max(15, afforestedAir),
-      'Mohammed Al-Bishr Air': nonAfforestedAir,
-      'Ishaq Ibn Ibrahim Air': preAfforestationAir,
+      'Afforested Air': Math.max(15, afforestedAir),
+      'Non-afforested Air': nonAfforestedAir,
+      'Pre-afforestation Air': preAfforestationAir,
       // Additional metadata
       season: i < 3 || i > 10 ? 'Winter' : i < 6 ? 'Spring' : i < 9 ? 'Summer' : 'Autumn',
       co2Reduction: Math.round(nonAfforestedCO2 - afforestedCO2),
@@ -1418,21 +1439,22 @@ const useEnvironmentalData = () => {
     }
   };
   
-  // ENHANCED: Fetch surface temp with specified areas and daily data
+  // ENHANCED: Fetch surface temp - Prince Sultan University and comparison areas
   const fetchSurfaceTemp = async () => {
     setLoadingStates(prev => ({ ...prev, surfaceTemp: true }));
     try {
-      // Al-Malaz is afforested, Industrial Area is non-planted
-      const afforested = { lat: 24.6877, lng: 46.7219, name: 'Al-Malaz (Afforested)' };
-      const nonPlanted = { lat: 24.6200, lng: 46.7500, name: 'Industrial Area' };
-      
+      // Prince Sultan University (PSU) center coordinates for primary monitoring
+      // Using Al-Malaz (afforested) as baseline comparison
+      const afforested = { lat: 24.73605, lng: 46.70095, name: 'Prince Sultan University (Afforested)' };
+      const nonPlanted = { lat: 24.6200, lng: 46.7500, name: 'Industrial Area (Non-afforested)' };
+
       const [weatherAff, weatherNon] = await Promise.all([
         ApiService.fetchWeatherData(afforested.lat, afforested.lng),
         ApiService.fetchWeatherData(nonPlanted.lat, nonPlanted.lng)
       ]);
-      
+
       const surfaceTempData = DataProcessor.processSurfaceTemperaturePair(weatherAff, weatherNon);
-      
+
       setDashboardData(prev => ({ ...prev, surfaceTempData }));
       setDataTimestamps(prev => ({ ...prev, surfaceTemp: Date.now() }));
       setApiStatus(prev => ({ ...prev, surfaceTemp: 'success' }));
@@ -1460,19 +1482,19 @@ const useEnvironmentalData = () => {
       
       const parameters = ['pm25', 'pm10', 'no2', 'o3', 'so2', 'co'];
       
-      // Try to fetch real data with more aggressive parameters
+      // Try to fetch real data with more aggressive parameters - PSU coordinates
       const [aqNow, aqPrev] = await Promise.all([
         ApiService.fetchAirQualityWindow({
-          lat: 24.7136,
-          lng: 46.6753,
+          lat: 24.73605, // Prince Sultan University
+          lng: 46.70095,
           radius: 500000, // 500km radius
           date_from: iso(weekAgo),
           date_to: iso(now),
           parameters
         }),
         ApiService.fetchAirQualityWindow({
-          lat: 24.7136,
-          lng: 46.6753,
+          lat: 24.73605, // Prince Sultan University
+          lng: 46.70095,
           radius: 500000,
           date_from: iso(twoWeeksAgo),
           date_to: iso(weekAgo),
@@ -1524,18 +1546,18 @@ const useEnvironmentalData = () => {
   const fetchNDVI = async () => {
     setLoadingStates(prev => ({ ...prev, ndvi: true }));
     try {
-      // Riyadh city center coordinates for accurate satellite NDVI calculation
-      const riyadhCoordinates = {
-        lat: 24.7136, // Riyadh city center latitude
-        lng: 46.6753  // Riyadh city center longitude
+      // Prince Sultan University coordinates for accurate satellite NDVI calculation
+      const psuCoordinates = {
+        lat: 24.73605, // Prince Sultan University latitude
+        lng: 46.70095  // Prince Sultan University longitude
       };
-      
-      console.log(`Fetching real satellite NDVI data for Riyadh (${riyadhCoordinates.lat}, ${riyadhCoordinates.lng})`);
+
+      console.log(`Fetching real satellite NDVI data for PSU (${psuCoordinates.lat}, ${psuCoordinates.lng})`);
       
       // Try to fetch real satellite NDVI data
       const biodiversityData = await DataProcessor.processRealNDVIData(
-        riyadhCoordinates.lat, 
-        riyadhCoordinates.lng, 
+        psuCoordinates.lat,
+        psuCoordinates.lng,
         6
       );
       
@@ -1543,23 +1565,24 @@ const useEnvironmentalData = () => {
         throw new Error('No satellite NDVI data available');
       }
       
-      // Add Riyadh-specific metadata (no species counts - removed as requested)
+      // Add Prince Sultan University metadata (no species counts - removed as requested)
       const enhancedBiodiversityData = biodiversityData.map(item => ({
         ...item,
         city: 'Riyadh',
         country: 'Saudi Arabia',
+        location: 'Prince Sultan University',
         climateZone: 'BWh (Hot Desert Climate)',
         afforestationProgram: 'Saudi Green Initiative',
-        coordinates: riyadhCoordinates
+        coordinates: psuCoordinates
       }));
       
       setDashboardData(prev => ({ ...prev, biodiversityData: enhancedBiodiversityData }));
       setDataTimestamps(prev => ({ ...prev, ndvi: Date.now() }));
       setApiStatus(prev => ({ ...prev, ndvi: 'success' }));
       
-      console.log('Real satellite NDVI data fetched for Riyadh:', enhancedBiodiversityData);
+      console.log('Real satellite NDVI data fetched for PSU:', enhancedBiodiversityData);
     } catch (error) {
-      console.error('Satellite NDVI fetch error for Riyadh:', error);
+      console.error('Satellite NDVI fetch error for PSU:', error);
       
       // Try climate-based fallback estimation
       try {
@@ -2157,9 +2180,10 @@ const RiyadhMap = ({ heatMapData, apiStatus, isLoading, timestamp, onRefresh, t 
 const SensorMap = ({ sensorData, t }) => {
   const [selectedSensor, setSelectedSensor] = useState(null);
   
-  const mapBounds = { 
-    minLat: 24.69, maxLat: 24.73, 
-    minLng: 46.65, maxLng: 46.70 
+  // Prince Sultan University Campus Bounding Box (zoomed out to show full campus)
+  const mapBounds = {
+    minLat: 24.73200, maxLat: 24.74000,
+    minLng: 46.69600, maxLng: 46.70600
   };
   
   // Convert lat/lng to percentage-based positioning for zoom stability
@@ -2204,12 +2228,12 @@ const SensorMap = ({ sensorData, t }) => {
       </div>
       
       <div className="w-full h-full relative bg-slate-100">
-        {/* Base Map */}
+        {/* Base Map - Prince Sultan University Campus */}
         <iframe
-          src="https://www.openstreetmap.org/export/embed.html?bbox=46.65,24.69,46.70,24.73&layer=mapnik"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=46.69600,24.73200,46.70600,24.74000&layer=mapnik"
           className="w-full h-full border-0"
           style={{ filter: 'opacity(0.8)' }}
-          title="Sensor Network Map"
+          title="Prince Sultan University Sensor Network"
         />
         
         {/* Sensor Pins Overlay - Percentage-based positioning for zoom stability */}
@@ -2249,16 +2273,22 @@ const SensorMap = ({ sensorData, t }) => {
           })}
         </div>
         
-        {/* Street Labels */}
+        {/* Campus Zone Labels */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-16 left-8 bg-blue-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-blue-800">
-            Abu Bakr Al-Razi (Afforested)
-          </div>
-          <div className="absolute top-32 right-8 bg-orange-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-orange-800">
-            Mohammed Al-Bishr (Non-afforested)
-          </div>
-          <div className="absolute bottom-20 left-12 bg-purple-100 bg-opacity-90 px-2 py-1 rounded text-xs font-medium text-purple-800">
-            Ishaq Ibn Ibrahim (Pre-afforestation)
+          <div className="absolute top-4 right-4 bg-white bg-opacity-95 px-3 py-2 rounded-lg shadow-md text-xs">
+            <div className="font-semibold text-slate-800 mb-1">Prince Sultan University</div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <span className="text-slate-600">North Zone (Afforested)</span>
+            </div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+              <span className="text-slate-600">Central Zone (Non-afforested)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+              <span className="text-slate-600">South Zone (Pre-afforestation)</span>
+            </div>
           </div>
         </div>
       </div>
@@ -2744,31 +2774,31 @@ const RawdahDashboard = () => {
                       />
                       <Line
                         type="monotone"
-                        dataKey={`Abu Bakr Al-Razi ${selectedMetric}`}
+                        dataKey={`Afforested ${selectedMetric}`}
                         stroke="#22c55e"
                         strokeWidth={3}
                         dot={{ r: 4 }}
-                        name="Afforested Street"
+                        name="Afforested"
                         animationBegin={language === 'ar' ? 0 : 0}
                         animationDuration={800}
                       />
                       <Line
                         type="monotone"
-                        dataKey={`Mohammed Al-Bishr ${selectedMetric}`}
+                        dataKey={`Non-afforested ${selectedMetric}`}
                         stroke="#ef4444"
                         strokeWidth={3}
                         dot={{ r: 4 }}
-                        name="Non-afforested Street"
+                        name="Non-afforested"
                         animationBegin={language === 'ar' ? 0 : 0}
                         animationDuration={800}
                       />
                       <Line
                         type="monotone"
-                        dataKey={`Ishaq Ibn Ibrahim ${selectedMetric}`}
+                        dataKey={`Pre-afforestation ${selectedMetric}`}
                         stroke="#f59e0b"
                         strokeWidth={3}
                         dot={{ r: 4 }}
-                        name="Pre-afforestation Street"
+                        name="Pre-afforestation"
                         animationBegin={language === 'ar' ? 0 : 0}
                         animationDuration={800}
                       />
@@ -3071,6 +3101,103 @@ const RawdahDashboard = () => {
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
+                          {t.surfaceHeatTrend}
+                        </h3>
+                      </div>
+                      <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                        {t.surfaceHeatTrendDesc}
+                      </p>
+                    </div>
+                    <WeekSelector
+                      selectedWeek={selectedWeeks.surfaceHeat}
+                      onWeekChange={(week) => handleWeekSelection('surfaceHeat', week)}
+                      isDarkMode={isDarkMode}
+                      className="ml-4"
+                    />
+                  </div>
+                </div>
+                <div className="h-64">
+                  {(() => {
+                    // Get chart data (historical or current)
+                    const chartInfo = getChartData('surfaceHeat', dashboardData.surfaceTempData || []);
+                    const { data: chartData, isHistorical } = chartInfo;
+
+                    // Process data for weekly daily averages
+                    if (chartData.length === 0) {
+                      return (
+                        <div className="h-full flex items-center justify-center">
+                          <div className="text-center">
+                            <AlertCircle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                            <p className="text-sm text-slate-500">{t.loadingSurfaceHeatData || 'Loading surface heat data...'}</p>
+                            <p className="text-xs text-slate-400 mt-1">{t.fetchingFromWeatherApi}</p>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Calculate daily average from afforested and non-afforested areas
+                    const trendData = chartData.map(item => ({
+                      day: item.day,
+                      date: item.date,
+                      temperature: ((item.planted || 0) + (item.nonPlanted || 0)) / 2,
+                      isFuture: item.isFuture
+                    }));
+
+                    return (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={prepareChartData(trendData, language === 'ar', language)}>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke={isDarkMode ? "#374151" : "#f1f5f9"}
+                          />
+                          <XAxis
+                            dataKey="day"
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            reversed={language === 'ar'}
+                          />
+                          <YAxis
+                            tick={{ fontSize: 10, fill: isDarkMode ? "#9ca3af" : "#64748b" }}
+                            orientation={language === 'ar' ? 'right' : 'left'}
+                            domain={['dataMin - 2', 'dataMax + 2']}
+                          />
+                          <Tooltip
+                            formatter={(value, name) => [
+                              `${value.toFixed(1)}°C`,
+                              name === 'temperature' ? t.surfaceHeat : name
+                            ]}
+                            labelFormatter={(label) => `${label}`}
+                            contentStyle={{
+                              backgroundColor: isDarkMode ? "#374151" : "#ffffff",
+                              border: isDarkMode ? "1px solid #4b5563" : "1px solid #e2e8f0",
+                              color: isDarkMode ? "#f3f4f6" : "#1e293b"
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="temperature"
+                            stroke="#ef4444"
+                            strokeWidth={2}
+                            dot={{ fill: '#ef4444', r: 3 }}
+                            activeDot={{ r: 5 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    );
+                  })()}
+                </div>
+              </Card>
+            </div>
+            
+            {/* Real-Time Environmental Metrics with Individual Loading States */}
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              
+              {/* Surface Heat by District - Moved from previous location */}
+              <Card isDarkMode={isDarkMode}>
+                <div className="mb-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
                           {t.surfaceHeatByDistrict}
                         </h3>
                       </div>
@@ -3091,36 +3218,36 @@ const RawdahDashboard = () => {
                     // Get chart data (historical or current)
                     const chartInfo = getChartData('surfaceHeat', dashboardData.surfaceTempData || []);
                     const { data: chartData, isHistorical } = chartInfo;
-                    
+
                     let filteredData;
                     if (isHistorical && chartData.length > 0) {
                       // For historical data, create proper district data structure
                       // Average the weekly data for each district
                       const weeklyAverage = chartData.reduce((sum, item) => sum + (item.planted || item.nonPlanted || 35), 0) / chartData.length;
-                      
+
                       filteredData = [
+                        { area: 'Prince Sultan University', temperature: Math.round(weeklyAverage) }, // PSU campus
                         { area: 'Al-Malaz', temperature: Math.round(weeklyAverage - 8) }, // Afforested area (cooler)
-                        { area: 'Industrial Area', temperature: Math.round(weeklyAverage + 5) }, // Industrial area (hotter)
-                        { area: 'Al-Ghadeer', temperature: Math.round(weeklyAverage) } // Mixed area
+                        { area: 'Industrial Area', temperature: Math.round(weeklyAverage + 5) } // Industrial area (hotter)
                       ];
                     } else {
-                      // Use current heat map data - ensure exactly 3 districts
-                      const targetDistricts = ['Al-Malaz', 'Industrial Area', 'Al-Ghadeer'];
+                      // Use current heat map data - prioritize PSU and comparison districts
+                      const targetDistricts = ['Prince Sultan University', 'Al-Malaz', 'Industrial Area'];
                       filteredData = [];
-                      
+
                       targetDistricts.forEach(districtName => {
                         const district = dashboardData.heatMapData.find(d => d.area === districtName);
                         if (district) {
                           filteredData.push(district);
                         }
                       });
-                      
+
                       // If we don't have all 3 districts, fall back to first 3 available
                       if (filteredData.length < 3 && dashboardData.heatMapData.length >= 3) {
                         filteredData = dashboardData.heatMapData.slice(0, 3);
                       }
                     }
-                    
+
                     if (filteredData.length === 0) {
                       return (
                         <div className="h-full flex items-center justify-center">
@@ -3132,13 +3259,13 @@ const RawdahDashboard = () => {
                         </div>
                       );
                     }
-                    
+
                     return (
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={prepareChartData(filteredData, language === 'ar', language)}>
-                          <CartesianGrid 
-                            strokeDasharray="3 3" 
-                            stroke={isDarkMode ? "#374151" : "#f1f5f9"} 
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke={isDarkMode ? "#374151" : "#f1f5f9"}
                           />
                           <XAxis
                             dataKey="area"
@@ -3160,48 +3287,15 @@ const RawdahDashboard = () => {
                               color: isDarkMode ? "#f3f4f6" : "#1e293b"
                             }}
                           />
-                          <Bar 
-                            dataKey="temperature" 
-                            fill="#ef4444" 
-                            radius={[4, 4, 0, 0]} 
+                          <Bar
+                            dataKey="temperature"
+                            fill="#ef4444"
+                            radius={[4, 4, 0, 0]}
                           />
                         </BarChart>
                       </ResponsiveContainer>
                     );
                   })()}
-                </div>
-              </Card>
-            </div>
-            
-            {/* Real-Time Environmental Metrics with Individual Loading States */}
-            <div className="grid grid-cols-2 gap-6 mb-8">
-              
-              {/* Placeholder Card - Chart to be added later */}
-              <Card isDarkMode={isDarkMode} className="relative">
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}>
-                      {language === 'ar' ? 'مخطط جديد (قيد التطوير)' : 'New Chart (Coming Soon)'}
-                    </h3>
-                  </div>
-                  <p className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    {language === 'ar' ? 'سيتم إضافة مخطط جديد في هذا المكان قريباً' : 'A new chart will be added here soon'}
-                  </p>
-                </div>
-                
-                <div className="h-64 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className={`w-16 h-16 mx-auto mb-4 rounded-full border-4 border-dashed ${
-                      isDarkMode ? 'border-slate-600' : 'border-slate-300'
-                    } flex items-center justify-center`}>
-                      <div className={`w-8 h-8 rounded-full ${
-                        isDarkMode ? 'bg-slate-600' : 'bg-slate-300'
-                      }`}></div>
-                    </div>
-                    <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {language === 'ar' ? 'مساحة محجوزة للمخطط الجديد' : 'Chart placeholder'}
-                    </p>
-                  </div>
                 </div>
               </Card>
 
