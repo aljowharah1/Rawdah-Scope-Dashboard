@@ -745,7 +745,6 @@ const DataProcessor = {
       const temperatureStress = Math.max(0, (t - 50) * 0.01); // Penalty for >50°C avg
       
       // Urban afforestation effect (Riyadh's green initiatives)
-      const currentYear = new Date().getFullYear();
       const yearsFromBaseline = Math.max(0, year - 2015); // Saudi Vision 2030 started ~2015
       const afforestationBonus = Math.min(0.25, yearsFromBaseline * 0.04); // 4% improvement per year, max 25%
       
@@ -905,7 +904,7 @@ const DataProcessor = {
         });
 
         if (appearsResponse.ok) {
-          const data = await appearsResponse.json();
+          await appearsResponse.json();
           // This would typically require polling for results, so we'll use a simplified approach
           console.log('AppEEARS API connection successful, but requires async processing');
         }
@@ -1238,8 +1237,6 @@ const generateTemperatureData = () => {
 };
 
 const generateSensorData = () => {
-  const now = new Date();
-  
   // Prince Sultan University Sensor Nodes (3 nodes for deployment)
   // Coordinates within PSU campus: North: 24.73810, South: 24.73400, East: 46.70420, West: 46.69770
   const sensors = [
@@ -1816,9 +1813,7 @@ const useEnvironmentalData = () => {
         coverage: 'Riyadh metropolitan area (24.6-24.8°N, 46.5-46.8°E)',
         lastUpdated: new Date()
       };
-      
-      let dataPointsFound = 0;
-      
+
       // REAL DATA ONLY - Look for actual carbon sequestration measurements
       // APIs must provide direct carbon data, not forest area that needs conversion
       console.log('⚠️ NO ESTIMATION ALLOWED - Searching for real Riyadh carbon sequestration data only');
@@ -1836,7 +1831,6 @@ const useEnvironmentalData = () => {
             carbonData.dataSources.push('Global Forest Watch - Direct Carbon Data');
             carbonData.confidence = 'high';
             realCarbonDataFound = true;
-            dataPointsFound++;
             console.log(`✅ GFW Real Carbon Data: ${carbonValue} MtCO₂`);
           } else {
             console.log('⚠️ GFW only provides forest area - cannot convert to carbon (no estimation allowed)');
@@ -1912,9 +1906,9 @@ const useEnvironmentalData = () => {
     }
   };
   
-  useEffect(() => {
+useEffect(() => {
     fetchRealTimeData();
-    
+
     const weatherInterval = setInterval(() => fetchRealTimeData(), 10 * 60 * 1000);
     const sensorInterval = setInterval(() => {
       setDashboardData(prev => ({
@@ -1924,11 +1918,12 @@ const useEnvironmentalData = () => {
         comparisonData: generateComparisonData()
       }));
     }, 30000);
-    
+
     return () => {
       clearInterval(weatherInterval);
       clearInterval(sensorInterval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   return {
@@ -2313,15 +2308,13 @@ const SensorMap = ({ sensorData, t }) => {
 // Main Dashboard Component with Collapsible Chatbot & Language Toggle
 // ============================
 const RawdahDashboard = () => {
-  const { 
-    dashboardData, 
-    apiStatus, 
-    lastUpdated, 
-    isLoading, 
-    loadingStates, 
-    dataTimestamps, 
-    refreshWidget, 
-    refreshAll 
+  const {
+    dashboardData,
+    apiStatus,
+    isLoading,
+    loadingStates,
+    dataTimestamps,
+    refreshWidget
   } = useEnvironmentalData();
   
   const [selectedMetric, setSelectedMetric] = useState('CO₂');
@@ -2413,13 +2406,6 @@ const RawdahDashboard = () => {
     };
   };
   
-  const currentCO2 = getLastValue(dashboardData.co2Data, language)?.value || 0;
-  const avgTemperature = dashboardData.temperatureData?.length > 0 
-    ? dashboardData.temperatureData.reduce((sum, item) => sum + item.current, 0) / dashboardData.temperatureData.length 
-    : 0;
-  const avgSurfaceHeat = dashboardData.surfaceTempData?.length > 0 
-    ? dashboardData.surfaceTempData.reduce((sum, item) => sum + (item.nonPlanted || 0), 0) / dashboardData.surfaceTempData.length 
-    : 52;
   
   // Show loading state only if still loading and no data yet
   // After timeout expires, show dashboard even if APIs failed
@@ -3132,7 +3118,7 @@ const RawdahDashboard = () => {
                   {(() => {
                     // Get chart data (historical or current)
                     const chartInfo = getChartData('surfaceHeat', dashboardData.surfaceTempData || []);
-                    const { data: chartData, isHistorical } = chartInfo;
+                    const { data: chartData } = chartInfo;
 
                     // Process data for weekly daily averages
                     if (chartData.length === 0) {
