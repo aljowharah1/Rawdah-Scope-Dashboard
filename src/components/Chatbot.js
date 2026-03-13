@@ -12,22 +12,26 @@ const AIChatbotService = {
     try {
       // API key is configured through Vercel environment variables
       const apiKey = process.env.REACT_APP_OPENAI_API_KEY;
-      
+
+      console.log('🔑 API Key status:', apiKey ? `Found (${apiKey.substring(0, 10)}...)` : 'NOT FOUND');
+
       if (!apiKey) {
         console.warn('OpenAI API key not configured in environment. Falling back to manual responses.');
         return this.getFallbackResponse(message, dashboardContext, language);
       }
 
       const contextPrompt = this.createContextPrompt(dashboardContext, language);
-      
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+
+      console.log('📤 Sending request to OpenAI...');
+
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model:"openai/gpt-oss-120b:free",
           messages: [
             {
               role: 'system',
@@ -43,16 +47,20 @@ const AIChatbotService = {
         })
       });
 
+      console.log('📥 OpenAI Response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ OpenAI Response data:', data);
         if (data.choices && data.choices[0] && data.choices[0].message) {
           return data.choices[0].message.content.trim();
         }
       } else {
-        console.error('OpenAI API Error:', response.status, response.statusText);
+        const errorData = await response.text();
+        console.error('❌ OpenAI API Error:', response.status, response.statusText, errorData);
       }
     } catch (error) {
-      console.error('OpenAI API failed:', error);
+      console.error('❌ OpenAI API failed:', error.message);
     }
 
     return this.getFallbackResponse(message, dashboardContext, language);
