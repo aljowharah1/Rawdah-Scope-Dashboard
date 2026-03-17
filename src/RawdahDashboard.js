@@ -201,59 +201,31 @@ const ApiService = {
     if (cached) return cached.data;
     
     const fetcher = async () => {
-      // Strategy 1: World Air Quality Index API (no CORS issues)
+      // Open-Meteo Air Quality API (free, no API key, has Riyadh data)
       try {
-        const waqiUrl = `https://api.waqi.info/feed/geo:${lat};${lng}/?token=demo`;
-        const waqiResponse = await fetch(waqiUrl);
-        
-        if (waqiResponse.ok) {
-          const waqiData = await waqiResponse.json();
-          
-          if (waqiData.status === 'ok' && waqiData.data) {
-            const iaqi = waqiData.data.iaqi || {};
-            const results = [];
-            
-            // Convert WAQI data to OpenAQ format
-            if (iaqi.pm25) results.push({ parameter: 'pm25', value: iaqi.pm25.v, unit: 'µg/m³', date: { utc: new Date().toISOString() } });
-            if (iaqi.pm10) results.push({ parameter: 'pm10', value: iaqi.pm10.v, unit: 'µg/m³', date: { utc: new Date().toISOString() } });
-            if (iaqi.no2) results.push({ parameter: 'no2', value: iaqi.no2.v, unit: 'µg/m³', date: { utc: new Date().toISOString() } });
-            if (iaqi.o3) results.push({ parameter: 'o3', value: iaqi.o3.v, unit: 'µg/m³', date: { utc: new Date().toISOString() } });
-            if (iaqi.so2) results.push({ parameter: 'so2', value: iaqi.so2.v, unit: 'µg/m³', date: { utc: new Date().toISOString() } });
-            if (iaqi.co) results.push({ parameter: 'co', value: iaqi.co.v, unit: 'mg/m³', date: { utc: new Date().toISOString() } });
-            
-            if (results.length > 0) {
-              return { results, source: 'waqi' };
-            }
-          }
-        }
-      } catch (e) {
-        console.log('WAQI API failed, trying alternative sources...');
-      }
-      
-      // Strategy 2: Use OpenWeatherMap Air Pollution API (no API key needed for basic use)
-      try {
-        const owmUrl = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lng}&appid=demo`;
-        const owmResponse = await fetch(owmUrl);
-        
-        if (owmResponse.ok) {
-          const owmData = await owmResponse.json();
-          
-          if (owmData.list && owmData.list.length > 0) {
-            const components = owmData.list[0].components;
+        const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone`;
+        const aqResponse = await fetch(aqUrl);
+
+        if (aqResponse.ok) {
+          const aqData = await aqResponse.json();
+
+          if (aqData.current) {
+            const c = aqData.current;
+            const now = new Date().toISOString();
             const results = [
-              { parameter: 'pm25', value: components.pm2_5 || 0, unit: 'µg/m³', date: { utc: new Date().toISOString() } },
-              { parameter: 'pm10', value: components.pm10 || 0, unit: 'µg/m³', date: { utc: new Date().toISOString() } },
-              { parameter: 'no2', value: components.no2 || 0, unit: 'µg/m³', date: { utc: new Date().toISOString() } },
-              { parameter: 'o3', value: components.o3 || 0, unit: 'µg/m³', date: { utc: new Date().toISOString() } },
-              { parameter: 'so2', value: components.so2 || 0, unit: 'µg/m³', date: { utc: new Date().toISOString() } },
-              { parameter: 'co', value: components.co ? components.co / 1000 : 0, unit: 'mg/m³', date: { utc: new Date().toISOString() } }
+              { parameter: 'pm25', value: c.pm2_5 || 0, unit: 'µg/m³', date: { utc: now } },
+              { parameter: 'pm10', value: c.pm10 || 0, unit: 'µg/m³', date: { utc: now } },
+              { parameter: 'no2', value: c.nitrogen_dioxide || 0, unit: 'µg/m³', date: { utc: now } },
+              { parameter: 'o3', value: c.ozone || 0, unit: 'µg/m³', date: { utc: now } },
+              { parameter: 'so2', value: c.sulphur_dioxide || 0, unit: 'µg/m³', date: { utc: now } },
+              { parameter: 'co', value: c.carbon_monoxide ? c.carbon_monoxide / 1000 : 0, unit: 'mg/m³', date: { utc: now } }
             ];
-            
-            return { results, source: 'openweathermap' };
+
+            return { results, source: 'open-meteo' };
           }
         }
       } catch (e) {
-        console.log('OpenWeatherMap API failed, using realistic simulated data...');
+        console.log('Open-Meteo Air Quality API failed...');
       }
       
       // No fallback data - throw error to be handled by caller
