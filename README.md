@@ -27,9 +27,9 @@ Built using**OpenWeatherMap**, **WAQI**, **NASA EarthData**, and **OpenAI ChatGP
 
 ## 📍 Monitoring Zones currently
 
-1. **Abu Bakr Al-Razi Street** – *Afforested*
-2. **Mohammed Al-Bishr Street** – *Non-afforested*
-3. **Ishaq Ibn Ibrahim Street** – *Pre-afforestation*
+1. **xxx** – *Afforested*
+2. **xxx** – *Non-afforested*
+3. **xxx** – *Pre-afforestation*
 
 Each zone includes:
 - 3 IoT sensor nodes
