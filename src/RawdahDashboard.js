@@ -764,13 +764,15 @@ const DataProcessor = {
     return series.slice(-6);
   },
 
-  // Real NDVI processing from satellite data (Copernicus/Google Earth Engine)
+  // Real NDVI processing from satellite data
   async processRealNDVIData(lat = 24.7136, lng = 46.6753, years = 6) {
     const series = [];
     const currentYear = new Date().getFullYear();
-    
-    for (let i = 0; i < years; i++) {
-      const year = currentYear - (years - 1) + i;
+    // MODIS ORNL only serves recent years freely — request last 2 years only
+    const yearsToFetch = Math.min(years, 2);
+
+    for (let i = 0; i < yearsToFetch; i++) {
+      const year = currentYear - (yearsToFetch - 1) + i;
       
       try {
         // Fetch real NDVI data from satellite APIs
