@@ -811,15 +811,15 @@ const DataProcessor = {
     if (cached) return cached.data;
 
     const fetcher = async () => {
-      // Strategy 1: NASA MODIS Web Service (most reliable public API)
+      // Strategy 1: NASA MODIS via ORNL DAAC REST API
       try {
-        const startDate = `A${year}_049`; // Day 049 - first spring composite (underscore required)
-        const endDate = `A${year}_241`;   // Day 241 - end of summer, covers growing season
+        const startDate = `A${year}049`; // Day 49 (Feb 18) - valid MOD13Q1 composite date
+        const endDate = `A${year}241`;   // Day 241 (Aug 29) - covers growing season
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
         const modisResponse = await fetch(
-          `https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=${lat}&longitude=${lng}&startDate=${startDate}&endDate=${endDate}&kmAboveBelow=0&kmLeftRight=0`,
+          `https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=${lat}&longitude=${lng}&startDate=${startDate}&endDate=${endDate}&kmAboveBelow=2&kmLeftRight=2`,
           { signal: controller.signal }
         );
         clearTimeout(timeoutId);
@@ -827,66 +827,26 @@ const DataProcessor = {
         if (modisResponse.ok) {
           const modisData = await modisResponse.json();
           if (modisData.subset && modisData.subset.length > 0) {
-            // Filter out bad quality data (values < -3000 indicate no data/clouds)
             const validNDVI = modisData.subset
               .filter(item => item.data && item.data[0] > -3000)
               .map(item => item.data[0]);
-            
+
             if (validNDVI.length > 0) {
-              // Calculate median NDVI for the year (more robust than mean)
               validNDVI.sort((a, b) => a - b);
               const medianNDVI = validNDVI[Math.floor(validNDVI.length / 2)];
-              
-              const result = {
-                ndvi: Math.max(0.1, Math.min(0.8, medianNDVI / 10000)), // MODIS scale factor
+              return {
+                ndvi: Math.max(0.1, Math.min(0.8, medianNDVI / 10000)),
                 acquisitionDate: modisData.subset[0]?.calendar_date,
                 dataSource: 'NASA MODIS MOD13Q1',
                 qualityPixels: validNDVI.length
               };
-              
-              return result;
             }
           }
         }
       } catch (error) {
-        console.log('NASA MODIS API failed, trying alternative...');
+        console.log('NASA MODIS ORNL failed, trying NASA POWER...');
       }
 
-      // Strategy 2: NASA MODIS via direct subset API (alternative endpoint)
-      try {
-        const controller2 = new AbortController();
-        const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
-        const modisAltResponse = await fetch(
-          `https://modis.ornl.gov/rst/api/v1/MOD13A2/subset?latitude=${lat}&longitude=${lng}&startDate=A${year}_049&endDate=A${year}_241&kmAboveBelow=0&kmLeftRight=0`,
-          { signal: controller2.signal }
-        );
-        clearTimeout(timeoutId2);
-
-        if (modisAltResponse.ok) {
-          const modisAltData = await modisAltResponse.json();
-          if (modisAltData.subset && modisAltData.subset.length > 0) {
-            const validNDVI = modisAltData.subset
-              .filter(item => item.data && item.data[0] > -3000)
-              .map(item => item.data[0]);
-
-            if (validNDVI.length > 0) {
-              validNDVI.sort((a, b) => a - b);
-              const medianNDVI = validNDVI[Math.floor(validNDVI.length / 2)];
-
-              return {
-                ndvi: Math.max(0.1, Math.min(0.8, medianNDVI / 10000)),
-                acquisitionDate: modisAltData.subset[0]?.calendar_date,
-                dataSource: 'NASA MODIS MOD13A2',
-                qualityPixels: validNDVI.length
-              };
-            }
-          }
-        }
-      } catch (error) {
-        console.log('NASA MODIS MOD13A2 also failed');
-      }
-
-      // If all APIs fail, throw error
       throw new Error(`No satellite NDVI data available for ${year} at coordinates ${lat}, ${lng}`);
     };
 
