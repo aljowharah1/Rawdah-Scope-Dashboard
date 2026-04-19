@@ -814,12 +814,15 @@ const DataProcessor = {
       // Strategy 1: NASA MODIS Web Service (most reliable public API)
       try {
         const startDate = `A${year}001`; // Day 1 of year
-        const endDate = `A${year}365`;   // Day 365 of year
-        
+        const endDate = `A${year}353`;   // Day 353 - last valid 16-day period
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
         const modisResponse = await fetch(
           `https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=${lat}&longitude=${lng}&startDate=${startDate}&endDate=${endDate}&kmAboveBelow=0&kmLeftRight=0`,
-          { timeout: 10000 }
+          { signal: controller.signal }
         );
+        clearTimeout(timeoutId);
 
         if (modisResponse.ok) {
           const modisData = await modisResponse.json();
@@ -851,10 +854,13 @@ const DataProcessor = {
 
       // Strategy 2: NASA MODIS via direct subset API (alternative endpoint)
       try {
+        const controller2 = new AbortController();
+        const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
         const modisAltResponse = await fetch(
-          `https://modis.ornl.gov/rst/api/v1/MOD13A2/subset?latitude=${lat}&longitude=${lng}&startDate=A${year}001&endDate=A${year}365&kmAboveBelow=0&kmLeftRight=0`,
-          { timeout: 15000 }
+          `https://modis.ornl.gov/rst/api/v1/MOD13A2/subset?latitude=${lat}&longitude=${lng}&startDate=A${year}001&endDate=A${year}353&kmAboveBelow=0&kmLeftRight=0`,
+          { signal: controller2.signal }
         );
+        clearTimeout(timeoutId2);
 
         if (modisAltResponse.ok) {
           const modisAltData = await modisAltResponse.json();
