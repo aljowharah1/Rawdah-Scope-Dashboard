@@ -849,100 +849,35 @@ const DataProcessor = {
         console.log('NASA MODIS API failed, trying alternative...');
       }
 
-      // Strategy 2: Google Earth Engine via AppEEARS API (NASA's Application for Extracting and Exploring Analysis Ready Samples)
+      // Strategy 2: NASA MODIS via direct subset API (alternative endpoint)
       try {
-        // Use the AppEEARS API for MODIS data - more reliable than direct MODIS API
-        const appearsResponse = await fetch('https://lpdaacsvc.cr.usgs.gov/appeears/api/bundle/request', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            task_type: 'point',
-            task_name: `ndvi_riyadh_${year}`,
-            params: {
-              dates: [
-                { startDate: `${year}-01-01`, endDate: `${year}-12-31` }
-              ],
-              layers: [
-                {
-                  product: 'MOD13Q1.061',
-                  layer: '_250m_16_days_NDVI'
-                }
-              ],
-              coordinates: [
-                { latitude: lat, longitude: lng, category: 'riyadh_center' }
-              ]
-            }
-          })
-        });
-
-        if (appearsResponse.ok) {
-          await appearsResponse.json();
-          // This would typically require polling for results, so we'll use a simplified approach
-          console.log('AppEEARS API connection successful, but requires async processing');
-        }
-      } catch (error) {
-        console.log('AppEEARS API failed, trying USGS Landsat...');
-      }
-
-      // Strategy 3: Use Planet Labs or USGS Landsat for NDVI calculation
-      try {
-        // USGS Earth Explorer API for Landsat data
-        const landsatResponse = await fetch(
-          `https://earthexplorer.usgs.gov/inventory/json/v/1.4.1/search?datasetName=landsat_8_c1&startDate=${year}-01-01&endDate=${year}-12-31&ll=${lng},${lat}&ur=${lng + 0.01},${lat + 0.01}&includeUnknownCloudCover=false&maxCloudCover=20`,
-          { timeout: 8000 }
+        const modisAltResponse = await fetch(
+          `https://modis.ornl.gov/rst/api/v1/MOD13A2/subset?latitude=${lat}&longitude=${lng}&startDate=A${year}001&endDate=A${year}365&kmAboveBelow=0&kmLeftRight=0`,
+          { timeout: 15000 }
         );
 
-        if (landsatResponse.ok) {
-          const landsatData = await landsatResponse.json();
-          if (landsatData.data && landsatData.data.results && landsatData.data.results.length > 0) {
-            // Calculate synthetic NDVI from Landsat metadata
-            const scenes = landsatData.data.results;
-            const avgCloudCover = scenes.reduce((sum, scene) => sum + (scene.cloudCover || 0), 0) / scenes.length;
-            
-            // Estimate NDVI based on cloud cover and scene count (proxy for vegetation health)
-            const sceneCount = scenes.length;
-            const ndviEstimate = Math.max(0.1, 0.4 - (avgCloudCover / 100) * 0.2 + (sceneCount / 20) * 0.1);
-            
-            const result = {
-              ndvi: Math.min(0.7, ndviEstimate),
-              acquisitionDate: scenes[0].acquisitionDate,
-              dataSource: 'USGS Landsat 8 (estimated)',
-              sceneCount: sceneCount
-            };
-            
-            return result;
+        if (modisAltResponse.ok) {
+          const modisAltData = await modisAltResponse.json();
+          if (modisAltData.subset && modisAltData.subset.length > 0) {
+            const validNDVI = modisAltData.subset
+              .filter(item => item.data && item.data[0] > -3000)
+              .map(item => item.data[0]);
+
+            if (validNDVI.length > 0) {
+              validNDVI.sort((a, b) => a - b);
+              const medianNDVI = validNDVI[Math.floor(validNDVI.length / 2)];
+
+              return {
+                ndvi: Math.max(0.1, Math.min(0.8, medianNDVI / 10000)),
+                acquisitionDate: modisAltData.subset[0]?.calendar_date,
+                dataSource: 'NASA MODIS MOD13A2',
+                qualityPixels: validNDVI.length
+              };
+            }
           }
         }
       } catch (error) {
-        console.log('USGS Landsat API failed, using climate-based estimation...');
-      }
-
-      // Strategy 4: Climate-based NDVI estimation for Riyadh
-      try {
-        // Get climate data for the year to estimate NDVI
-        const climateData = await ApiService.fetchClimateDataForYear(lat, lng, year);
-        if (climateData && climateData.daily) {
-          const precip = (climateData.daily.precipitation_sum || []).reduce((s, v) => s + (v || 0), 0);
-          const avgTemp = (climateData.daily.temperature_2m_mean || []).reduce((s, v) => s + (v || 0), 0) / climateData.daily.temperature_2m_mean.length;
-          
-          // Riyadh-specific NDVI estimation based on climate
-          let estimatedNDVI = 0.15; // Base desert vegetation
-          estimatedNDVI += Math.min(0.25, precip / 500); // Precipitation bonus
-          estimatedNDVI -= Math.max(0, (avgTemp - 30) / 50); // Temperature stress
-          estimatedNDVI += 0.1; // Urban greenification in Riyadh
-          
-          const result = {
-            ndvi: Math.max(0.1, Math.min(0.6, estimatedNDVI)),
-            acquisitionDate: `${year}-06-15`, // Mid-year estimate
-            dataSource: 'Climate-based estimation',
-            temperature: avgTemp,
-            precipitation: precip
-          };
-          
-          return result;
-        }
-      } catch (error) {
-        console.log('Climate-based estimation failed');
+        console.log('NASA MODIS MOD13A2 also failed');
       }
 
       // If all APIs fail, throw error
@@ -1733,31 +1668,31 @@ const useEnvironmentalData = () => {
       
       // Use working APIs with Riyadh-specific coordinates and boundaries
       const [gfwRiyadhData, openDataRiyadh, satelliteData] = await Promise.allSettled([
-        // Global Forest Watch API for Riyadh area
-        fetch(`https://data-api.globalforestwatch.org/dataset/annual-tree-cover-loss/latest/query?sql=SELECT%20SUM(area__ha)%20as%20forest_area%20FROM%20data%20WHERE%20latitude%20BETWEEN%20${riyadhBounds.south}%20AND%20${riyadhBounds.north}%20AND%20longitude%20BETWEEN%20${riyadhBounds.west}%20AND%20${riyadhBounds.east}%20AND%20umd_tree_cover_loss__year%20%3E=%202020`, {
+        // World Bank Forest Area data for Saudi Arabia
+        fetch(`https://api.worldbank.org/v2/country/SAU/indicator/AG.LND.FRST.K2?date=2018:2023&format=json`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
         }).then(async res => {
-          if (!res.ok) throw new Error(`GFW Riyadh API: ${res.status}`);
+          if (!res.ok) throw new Error(`World Bank API: ${res.status}`);
           const data = await res.json();
-          console.log('GFW Riyadh area response:', data);
+          console.log('World Bank forest area response:', data);
           return data;
         }),
         
-        // Alternative: NASA MODIS data for Riyadh vegetation
-        fetch(`https://modis.gsfc.nasa.gov/data/dataprod/mod13.php?lat=${riyadhLat}&lon=${riyadhLng}&period=2020-2023`, {
+        // NASA MODIS NDVI via ORNL DAAC REST API (CORS-enabled)
+        fetch(`https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=${riyadhLat}&longitude=${riyadhLng}&startDate=A2020001&endDate=A2023365&kmAboveBelow=0&kmLeftRight=0`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
           }
         }).then(async res => {
-          if (!res.ok) throw new Error(`NASA MODIS: ${res.status}`);
+          if (!res.ok) throw new Error(`NASA MODIS ORNL: ${res.status}`);
           const data = await res.json();
-          console.log('NASA MODIS Riyadh response:', data);
+          console.log('NASA MODIS ORNL Riyadh response:', data);
           return data;
-        }).catch(() => null), // NASA endpoint might not be available
+        }).catch(() => null),
         
         // OpenStreetMap Overpass API for Riyadh green areas
         fetch(`https://overpass-api.de/api/interpreter?data=[out:json][timeout:25];(way["landuse"="forest"](${riyadhBounds.south},${riyadhBounds.west},${riyadhBounds.north},${riyadhBounds.east});way["natural"="wood"](${riyadhBounds.south},${riyadhBounds.west},${riyadhBounds.north},${riyadhBounds.east});way["leisure"="park"](${riyadhBounds.south},${riyadhBounds.west},${riyadhBounds.north},${riyadhBounds.east}););out%20geom;`, {
@@ -1795,20 +1730,16 @@ const useEnvironmentalData = () => {
       
       if (gfwRiyadhData.status === 'fulfilled' && gfwRiyadhData.value) {
         try {
-          const gfwResponse = gfwRiyadhData.value;
-          // Only use if GFW provides actual carbon data (not forest area)
-          if (gfwResponse.carbon_stock || gfwResponse.carbon_sequestration) {
-            const carbonValue = parseFloat(gfwResponse.carbon_stock || gfwResponse.carbon_sequestration);
-            carbonData.currentSequestration = carbonValue;
-            carbonData.dataSources.push('Global Forest Watch - Direct Carbon Data');
-            carbonData.confidence = 'high';
-            realCarbonDataFound = true;
-            console.log(`✅ GFW Real Carbon Data: ${carbonValue} MtCO₂`);
-          } else {
-            console.log('⚠️ GFW only provides forest area - cannot convert to carbon (no estimation allowed)');
+          const wbResponse = gfwRiyadhData.value;
+          // World Bank returns [metadata, dataArray]
+          if (Array.isArray(wbResponse) && wbResponse[1]) {
+            const forestData = wbResponse[1].filter(d => d.value !== null);
+            if (forestData.length > 0) {
+              console.log(`ℹ️ World Bank provides forest area data (${forestData.length} years) - area data only, not direct carbon`);
+            }
           }
         } catch (error) {
-          console.warn('GFW data processing error:', error);
+          console.warn('World Bank data processing error:', error);
         }
       }
       
