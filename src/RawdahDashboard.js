@@ -813,8 +813,8 @@ const DataProcessor = {
     const fetcher = async () => {
       // Strategy 1: NASA MODIS Web Service (most reliable public API)
       try {
-        const startDate = `A${year}001`; // Day 1 of year
-        const endDate = `A${year}353`;   // Day 353 - last valid 16-day period
+        const startDate = `A${year}_049`; // Day 049 - first spring composite (underscore required)
+        const endDate = `A${year}_241`;   // Day 241 - end of summer, covers growing season
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
@@ -857,7 +857,7 @@ const DataProcessor = {
         const controller2 = new AbortController();
         const timeoutId2 = setTimeout(() => controller2.abort(), 15000);
         const modisAltResponse = await fetch(
-          `https://modis.ornl.gov/rst/api/v1/MOD13A2/subset?latitude=${lat}&longitude=${lng}&startDate=A${year}001&endDate=A${year}353&kmAboveBelow=0&kmLeftRight=0`,
+          `https://modis.ornl.gov/rst/api/v1/MOD13A2/subset?latitude=${lat}&longitude=${lng}&startDate=A${year}_049&endDate=A${year}_241&kmAboveBelow=0&kmLeftRight=0`,
           { signal: controller2.signal }
         );
         clearTimeout(timeoutId2);
@@ -2316,6 +2316,34 @@ const RawdahDashboard = () => {
   };
   
   
+  // === KPI Progress Calculations ===
+  // Air temp & surface heat use real Open-Meteo API data (PSU vs Industrial Area temp diff).
+  // CO2 uses the afforestation comparison model (no real CO2 sensor API available).
+  const kpiPastDays = (dashboardData.surfaceTempData || []).filter(d => !d.isFuture);
+  const kpiAvgAirDiff = kpiPastDays.length > 0
+    ? kpiPastDays.reduce((sum, d) => sum + Math.max(0, d.difference || 0), 0) / kpiPastDays.length
+    : 0;
+  const kpiHasRealData = apiStatus.surfaceTemp === 'success' && kpiAvgAirDiff > 0;
+
+  // CO2: 20 ppm reduction achieved by afforestation vs 4% of 440 ppm target (17.6 ppm)
+  const co2KpiProgress = Math.min(100, Math.round(20 / ((415 + 25) * 0.04) * 100));
+
+  // Air temperature: real API diff vs 1.75°C target; fallback to comparison model (3°C / 1.75°C)
+  const airTempKpiProgress = kpiHasRealData
+    ? Math.min(100, Math.max(0, Math.round(kpiAvgAirDiff / 1.75 * 100)))
+    : Math.min(100, Math.round(3 / 1.75 * 100));
+
+  // Surface heat: surface temp diff ≈ 1.67× air temp diff (ratio from 5°C / 3°C comparison model)
+  const kpiEstSurfaceDiff = kpiHasRealData ? kpiAvgAirDiff * (5 / 3) : 5;
+  const surfaceHeatKpiProgress = Math.min(100, Math.max(0, Math.round(kpiEstSurfaceDiff / 11.5 * 100)));
+
+  // Overall: average of the three KPI progress values
+  const overallKpiProgress = Math.round((co2KpiProgress + airTempKpiProgress + surfaceHeatKpiProgress) / 3);
+
+  // Network status from actual generated sensor data
+  const kpiActiveSensors = (dashboardData.sensorData || []).filter(s => s.status === 'Active').length;
+  const kpiTotalSensors = (dashboardData.sensorData || []).length;
+
   // Show loading state only if still loading and no data yet
   // After timeout expires, show dashboard even if APIs failed
   if (isLoading) {
@@ -2452,7 +2480,7 @@ const RawdahDashboard = () => {
                     }`}>
                       <div 
                         className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: '75%' }}
+                        style={{ width: `${co2KpiProgress}%` }}
                       ></div>
                     </div>
                   </div>
@@ -2483,7 +2511,7 @@ const RawdahDashboard = () => {
                     }`}>
                       <div 
                         className="bg-orange-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: '82%' }}
+                        style={{ width: `${airTempKpiProgress}%` }}
                       ></div>
                     </div>
                   </div>
@@ -2516,7 +2544,7 @@ const RawdahDashboard = () => {
                     }`}>
                       <div 
                         className="bg-red-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: '68%' }}
+                        style={{ width: `${surfaceHeatKpiProgress}%` }}
                       ></div>
                     </div>
                   </div>
@@ -2549,7 +2577,7 @@ const RawdahDashboard = () => {
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                           <span className={`transition-colors duration-300 ${
                             isDarkMode ? 'text-white' : 'text-slate-800'
-                          }`}>10/10 {t.active}</span>
+                          }`}>{kpiActiveSensors}/{kpiTotalSensors} {t.active}</span>
                         </div>
                       </div>
                       <div>
@@ -2582,7 +2610,7 @@ const RawdahDashboard = () => {
                       }`}>{t.overallImpact}</div>
                       <div className={`text-xl font-bold mt-1 transition-colors duration-300 ${
                         isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-                      }`}>89.3% {t.progress}</div>
+                      }`}>{overallKpiProgress}% {t.progress}</div>
                       <div className={`text-xs mt-1 transition-colors duration-300 ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-600'
                       }`}>{t.sustainabilityTargets}</div>
