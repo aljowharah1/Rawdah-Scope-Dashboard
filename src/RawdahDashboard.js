@@ -768,11 +768,11 @@ const DataProcessor = {
   async processRealNDVIData(lat = 24.7136, lng = 46.6753, years = 6) {
     const series = [];
     const currentYear = new Date().getFullYear();
-    // MODIS ORNL only serves recent years freely — request last 2 years only
-    const yearsToFetch = Math.min(years, 2);
+    // MODIS ORNL only returns data for current year without authentication
+    const yearsToFetch = 1;
 
     for (let i = 0; i < yearsToFetch; i++) {
-      const year = currentYear - (yearsToFetch - 1) + i;
+      const year = currentYear;
       
       try {
         // Fetch real NDVI data from satellite APIs
@@ -1650,7 +1650,7 @@ const useEnvironmentalData = () => {
         }),
         
         // NASA MODIS NDVI via ORNL DAAC REST API (CORS-enabled)
-        fetch(`https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=${riyadhLat}&longitude=${riyadhLng}&startDate=A2020001&endDate=A2023365&kmAboveBelow=0&kmLeftRight=0`, {
+        fetch(`https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset?latitude=${riyadhLat}&longitude=${riyadhLng}&startDate=A${new Date().getFullYear()}049&endDate=A${new Date().getFullYear()}241&kmAboveBelow=2&kmLeftRight=2`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
